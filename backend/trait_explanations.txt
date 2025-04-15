@@ -1,0 +1,302 @@
+DETAILED EXPLANATION OF TRAITS BY ROLE MODEL
+===========================================
+
+ACTING
+------
+Impact Score: 4/5
+
+Potential Traits:
+  - Creativity
+  - Expression
+  - Confidence
+  - Public Speaking
+  - Emotional Intelligence
+  - Adaptability
+  - Performance Skills
+
+ADVOCATE
+--------
+Impact Score: 5/5
+
+Potential Traits:
+  - Analytical Thinking
+  - Public Speaking
+  - Persuasion
+  - Ethics
+  - Research Skills
+  - Problem Solving
+  - Communication
+
+AIR_HOSTESS
+-----------
+Impact Score: 4/5
+
+Potential Traits:
+  - Customer Service
+  - Communication
+  - Adaptability
+  - Problem Solving
+  - Multilingual Skills
+  - Teamwork
+  - Professionalism
+
+ARMY
+----
+Impact Score: 5/5
+
+Potential Traits:
+  - Discipline
+  - Leadership
+  - Physical Fitness
+  - Teamwork
+  - Decision Making
+  - Courage
+  - Strategic Thinking
+
+ARTIST
+------
+Impact Score: 4/5
+
+Potential Traits:
+  - Creativity
+  - Visual Thinking
+  - Innovation
+  - Attention to Detail
+  - Artistic Expression
+  - Patience
+  - Originality
+
+BANK
+----
+Impact Score: 4/5
+
+Potential Traits:
+  - Analytical Skills
+  - Financial Literacy
+  - Customer Service
+  - Attention to Detail
+  - Professionalism
+  - Risk Management
+  - Communication
+
+BEAUTICIAN
+----------
+Impact Score: 3/5
+
+Potential Traits:
+  - Creativity
+  - Attention to Detail
+  - Customer Service
+  - Artistic Skills
+  - Technical Knowledge
+  - Communication
+  - Trend Awareness
+
+BUSINESS
+--------
+Impact Score: 5/5
+
+Potential Traits:
+  - Leadership
+  - Strategic Thinking
+  - Innovation
+  - Risk Taking
+  - Decision Making
+  - Communication
+  - Financial Acumen
+
+CHEF
+----
+Impact Score: 4/5
+
+Potential Traits:
+  - Creativity
+  - Attention to Detail
+  - Time Management
+  - Teamwork
+  - Technical Skills
+  - Passion
+  - Innovation
+
+CIVIL_SERVICE
+-------------
+Impact Score: 5/5
+
+Potential Traits:
+  - Leadership
+  - Public Service
+  - Decision Making
+  - Ethics
+  - Communication
+  - Problem Solving
+  - Administrative Skills
+
+DANCER
+------
+Impact Score: 4/5
+
+Potential Traits:
+  - Creativity
+  - Physical Fitness
+  - Discipline
+  - Expression
+  - Teamwork
+  - Performance Skills
+  - Artistic Vision
+
+DOCTOR
+------
+Impact Score: 5/5
+
+Potential Traits:
+  - Analytical Thinking
+  - Empathy
+  - Problem Solving
+  - Communication
+  - Ethics
+  - Decision Making
+  - Continuous Learning
+
+ENGINEER
+--------
+Impact Score: 5/5
+
+Potential Traits:
+  - Analytical Thinking
+  - Problem Solving
+  - Technical Skills
+  - Innovation
+  - Attention to Detail
+  - Logical Thinking
+  - Creativity
+
+GUARDIAN
+--------
+Impact Score: 5/5
+
+Potential Traits:
+  - Responsibility
+  - Nurturing
+  - Patience
+  - Communication
+  - Empathy
+  - Leadership
+  - Problem Solving
+
+LAWYER
+------
+Impact Score: 5/5
+
+Potential Traits:
+  - Analytical Thinking
+  - Public Speaking
+  - Persuasion
+  - Ethics
+  - Research Skills
+  - Problem Solving
+  - Communication
+
+NOT_DECIDED
+-----------
+Impact Score: 3/5
+
+Potential Traits:
+  - Open-mindedness
+  - Curiosity
+  - Exploration
+  - Flexibility
+  - Self-discovery
+  - Adaptability
+  - Critical Thinking
+
+POLICE
+------
+Impact Score: 5/5
+
+Potential Traits:
+  - Discipline
+  - Leadership
+  - Physical Fitness
+  - Decision Making
+  - Communication
+  - Problem Solving
+  - Ethics
+
+POLITICIAN
+----------
+Impact Score: 4/5
+
+Potential Traits:
+  - Leadership
+  - Public Speaking
+  - Persuasion
+  - Strategic Thinking
+  - Communication
+  - Problem Solving
+  - Public Service
+
+SCIENTIST
+---------
+Impact Score: 5/5
+
+Potential Traits:
+  - Analytical Thinking
+  - Curiosity
+  - Research Skills
+  - Innovation
+  - Problem Solving
+  - Critical Thinking
+  - Creativity
+
+SINGER
+------
+Impact Score: 4/5
+
+Potential Traits:
+  - Creativity
+  - Expression
+  - Performance Skills
+  - Discipline
+  - Artistic Vision
+  - Communication
+  - Passion
+
+SPORTS
+------
+Impact Score: 4/5
+
+Potential Traits:
+  - Discipline
+  - Teamwork
+  - Physical Fitness
+  - Competitive Spirit
+  - Leadership
+  - Strategic Thinking
+  - Resilience
+
+TEACHER
+-------
+Impact Score: 5/5
+
+Potential Traits:
+  - Communication
+  - Patience
+  - Leadership
+  - Knowledge Sharing
+  - Empathy
+  - Organization
+  - Mentoring
+
+YOUTUBER
+--------
+Impact Score: 4/5
+
+Potential Traits:
+  - Creativity
+  - Communication
+  - Technical Skills
+  - Entrepreneurship
+  - Adaptability
+  - Innovation
+  - Public Speaking
+

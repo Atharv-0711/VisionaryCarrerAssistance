@@ -270,7 +270,7 @@ def get_background_sentiment(data):
 if __name__ == "__main__":
     try:
         # Load test data if available
-        test_data = pd.read_excel('Childsurvey.xlsx')
+        test_data = pd.read_excel('backend/Childsurvey.xlsx')
         results = get_background_sentiment(test_data)
         print(f"Analysis results: {results}")
         

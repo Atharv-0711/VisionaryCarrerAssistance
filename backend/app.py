@@ -18,7 +18,7 @@ CORS(app)  # Enable CORS for all routes
 # Load data once at startup
 try:
     # Use a direct path without 'backend' prefix since we're already in the backend directory
-    data = pd.read_excel('Childsurvey.xlsx', sheet_name=0)
+    data = pd.read_excel('backend/Childsurvey.xlsx', sheet_name=0)
     print(f"Data loaded successfully with {len(data)} records")
 except Exception as e:
     print(f"Error loading data: {e}")
@@ -156,7 +156,7 @@ def submit_survey():
         
         # Reload the data to include the new entry
         try:
-            data = pd.read_excel('Childsurvey.xlsx')
+            data = pd.read_excel('backend/Childsurvey.xlsx')
             print(f"Data reloaded with {len(data)} records")
         except Exception as e:
             print(f"Error reloading data after submission: {e}")

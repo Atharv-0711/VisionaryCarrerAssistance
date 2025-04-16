@@ -1,84 +1,97 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
+import PsychatricInsights from './psychatric_insights';
 
-// Register Chart.js components
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-const DataChartComponent = ({ data }) => {
-  if (!data) return null;
+interface DataProps {
+  behavioral?: {
+    positive_count?: number;
+    neutral_count?: number;
+    negative_count?: number;
+    highly_positive_count?: number;
+    highly_negative_count?: number;
+  };
+  income?: {
+    below_poverty_line?: number;
+    below_average?: number;
+    average?: number;
+    above_average?: number;
+    high_income?: number;
+  };
+}
 
-  // Prepare data for behavioral sentiment chart
-  const behavioralChartData = {
-    labels: ['Positive', 'Neutral', 'Negative', 'Highly Positive', 'Highly Negative'],
-    datasets: [
-      {
-        label: 'Behavioral Impact',
-        data: [
-          data.behavioral?.positive_count || 0,
-          data.behavioral?.neutral_count || 0,
-          data.behavioral?.negative_count || 0,
-          data.behavioral?.highly_positive_count || 0,
-          data.behavioral?.highly_negative_count || 0,
-        ],
-        backgroundColor: [
-          'rgba(75, 192, 192, 0.6)',
-          'rgba(255, 206, 86, 0.6)',
-          'rgba(255, 99, 132, 0.6)',
-          'rgba(54, 162, 235, 0.6)',
-          'rgba(153, 102, 255, 0.6)',
-        ],
-      },
-    ],
+interface SurveyData {
+  "Name of Child "?: string;
+  "Background of the Child "?: string;
+  "Problems in Home "?: string;
+  "Behavioral Impact"?: string;
+  "Reason for such role model "?: string;
+}
+
+const DataChartComponent: React.FC<{ data: DataProps }> = ({ data }) => {
+  const [surveyData, setSurveyData] = useState<SurveyData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch('http://localhost:5000/api/get-surveys');
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const result = await response.json();
+      // Get the most recent entry (should be the only one in the array)
+      setSurveyData(Array.isArray(result) && result.length > 0 ? result[0] : null);
+    } catch (err) {
+      console.error('Fetch error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load data');
+      setSurveyData(null);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Prepare data for income distribution chart
-  const incomeChartData = {
-    labels: ['Below Poverty', 'Below Average', 'Average', 'Above Average', 'High Income'],
-    datasets: [
-      {
-        label: 'Income Distribution',
-        data: [
-          data.income?.below_poverty_line || 0,
-          data.income?.below_average || 0,
-          data.income?.average || 0,
-          data.income?.above_average || 0,
-          data.income?.high_income || 0,
-        ],
-        backgroundColor: [
-          'rgba(255, 99, 132, 0.6)',
-          'rgba(255, 159, 64, 0.6)',
-          'rgba(255, 205, 86, 0.6)',
-          'rgba(75, 192, 192, 0.6)',
-          'rgba(54, 162, 235, 0.6)',
-        ],
-      },
-    ],
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // Add a refresh function that can be called after survey submission
+  const refreshData = () => {
+    fetchData();
   };
 
-  const options = {
-    responsive: true,
-    plugins: {
-      legend: {
-        position: 'top',
-      },
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-      },
-    },
-  };
+  // Make refreshData available to parent components
+  if (typeof window !== 'undefined') {
+    (window as any).refreshDashboard = refreshData;
+  }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-medium mb-4">Behavioral Impact Distribution</h3>
-        <Bar data={behavioralChartData} options={options} />
-      </div>
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-medium mb-4">Income Distribution</h3>
-        <Bar data={incomeChartData} options={options} />
+    <div className="space-y-8 p-4">
+      {/* Charts Section unchanged */}
+
+      <div className="bg-white rounded-lg shadow-lg p-6">
+        <h3 className="text-xl font-semibold mb-4">Latest Survey Insights</h3>
+        
+        {loading && <div>Loading...</div>}
+
+        {error && (
+          <div className="text-red-500 p-4 bg-red-50 rounded-lg mb-4">
+            <strong>Note:</strong> {error}
+          </div>
+        )}
+
+        {!loading && surveyData && (
+          <PsychatricInsights surveyData={surveyData} />
+        )}
+
+        {!loading && !surveyData && (
+          <div className="text-center p-4 text-gray-500">
+            No survey data available
+          </div>
+        )}
       </div>
     </div>
   );

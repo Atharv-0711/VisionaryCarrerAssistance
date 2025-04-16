@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "cors": "^2.8.5",
+    "excel4node": "^1.8.2",
+    "express": "^5.1.0",
+    "sentiment": "^5.0.2",
+    "xlsx": "^0.18.5"
+  }
+}

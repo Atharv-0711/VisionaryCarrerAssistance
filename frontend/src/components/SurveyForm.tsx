@@ -65,12 +65,18 @@ const SurveyForm: React.FC<SurveyFormProps> = ({ onSubmitSuccess }) => {
         if (onSubmitSuccess) {
           onSubmitSuccess();
         }
+
+        // Refresh the dashboard data using our global function
+        if (typeof window !== 'undefined' && (window as any).refreshDashboard) {
+          (window as any).refreshDashboard();
+        }
       } else {
-        throw new Error('Failed to submit survey');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to submit survey');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting survey:', error);
-      alert('Failed to submit survey. Please try again.');
+      alert(error.message || 'Failed to submit survey. Please try again.');
     } finally {
       setLoading(false);
     }

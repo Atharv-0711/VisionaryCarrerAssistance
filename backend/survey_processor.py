@@ -408,7 +408,7 @@ def process_and_save_survey(survey_data):
         analysis_results = process_survey(survey_data)
         
         # Load existing data
-        excel_path = 'backend/Childsurvey.xlsx'
+        excel_path = 'Childsurvey.xlsx'
         try:
             existing_data = pd.read_excel(excel_path)
         except Exception as e:
@@ -448,6 +448,7 @@ def process_and_save_survey(survey_data):
             print(f"Survey data saved to {excel_path}")
         except Exception as e:
             print(f"Error saving survey data to Excel: {e}")
+            raise e  # Re-raise the exception to be caught by the outer try-except
         
         # Generate combined dashboard
         combined_dashboard = generate_combined_dashboard(analysis_results)

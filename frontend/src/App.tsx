@@ -5,8 +5,9 @@ import SurveyForm from './components/SurveyForm';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import ResourcesPage from './Resources';
 import AboutPage from './About';
+import PsychiatricInsights from './components/psychatric_insights'; // Ensure this file exists or correct the path
 
-// Define types for the API response data based on backend structure
+// Define types for the API response data
 interface BackgroundAnalysisData {
   positive_count: number;
   negative_count: number;
@@ -62,6 +63,24 @@ interface AnalysisData {
   rolemodel: RoleModelAnalysisData;
   income: IncomeAnalysisData;
   totalSurveys: number;
+}
+
+interface SurveyData {
+  id: string;
+  timestamp: string;
+  sentimentScore: number;
+  emotionalTraits: string[];
+  cognitiveBias: string[];
+  recommendedActions: string[];
+  "Name of Child ": string;
+  "Background of the Child ": string;
+  "Problems in Home ": string;
+  "Behavioral Impact": string;
+  "Reason for such role model ": string;
+}
+
+interface PsychiatricInsightsProps {
+  surveyData: SurveyData;
 }
 
 interface NavLinkProps {
@@ -179,17 +198,18 @@ const Navbar = ({ activeTab, setActiveTab }: { activeTab: string, setActiveTab: 
 function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
+  const [surveyData, setSurveyData] = useState<SurveyData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAnalysisData();
+    fetchSurveyData();
   }, []);
 
   const fetchAnalysisData = async () => {
     try {
       setLoading(true);
-      setError(null);
       const response = await fetch('http://localhost:5000/api/analysis/complete');
       
       if (!response.ok) {
@@ -197,7 +217,6 @@ function App() {
       }
       
       const data = await response.json();
-      console.log('Fetched analysis data:', data);
       setAnalysisData(data);
     } catch (error) {
       console.error('Error fetching analysis:', error);
@@ -207,10 +226,20 @@ function App() {
     }
   };
 
+  const fetchSurveyData = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/get-surveys');
+      if (!response.ok) throw new Error('Survey fetch failed');
+      const data = await response.json();
+      setSurveyData(data);
+    } catch (error) {
+      console.error('Error fetching surveys:', error);
+    }
+  };
+
   const handleSurveySubmitSuccess = () => {
-    // Refresh data after survey submission
     fetchAnalysisData();
-    // Switch to dashboard view to show updated results
+    fetchSurveyData();
     setActiveTab('dashboard');
   };
 
@@ -275,7 +304,17 @@ function App() {
                 </div>
               </>
             } />
-            <Route path="/dashboard" element={<AnalyticsDashboard data={analysisData} />} />
+            <Route 
+              path="/dashboard" 
+              element={
+                <div className="space-y-8">
+                  <AnalyticsDashboard data={analysisData} />
+                  <PsychiatricInsights 
+                    surveyData={surveyData[surveyData.length - 1]} 
+                  />
+                </div>
+              } 
+            />
             <Route path="/survey" element={<SurveyForm onSubmitSuccess={handleSurveySubmitSuccess} />} />
             <Route path="/resources" element={<ResourcesPage />} />
             <Route path="/about" element={<AboutPage />} />

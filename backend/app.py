@@ -15,14 +15,17 @@ import survey_processor
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
+# Global variable declaration
+global data
+data = None
+
 # Load data once at startup
 try:
     # Use a direct path without 'backend' prefix since we're already in the backend directory
-    data = pd.read_excel('backend/Childsurvey.xlsx', sheet_name=0)
+    data = pd.read_excel('Childsurvey.xlsx', sheet_name=0)
     print(f"Data loaded successfully with {len(data)} records")
 except Exception as e:
     print(f"Error loading data: {e}")
-    data = None
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
@@ -156,7 +159,7 @@ def submit_survey():
         
         # Reload the data to include the new entry
         try:
-            data = pd.read_excel('backend/Childsurvey.xlsx')
+            data = pd.read_excel('Childsurvey.xlsx')
             print(f"Data reloaded with {len(data)} records")
         except Exception as e:
             print(f"Error reloading data after submission: {e}")
@@ -207,6 +210,44 @@ def get_trait_explanations():
         else:
             return jsonify({"explanations": "Trait explanations not available"}), 404
     except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/get-surveys', methods=['GET'])
+def get_surveys():
+    global data
+    if data is None:
+        return jsonify({"error": "Data not loaded"}), 500
+    
+    try:
+        # Reload data to ensure we have the latest
+        data = pd.read_excel('Childsurvey.xlsx')
+        
+        # Replace NaN values with None (null in JSON) and convert to records
+        data = data.replace({pd.NA: None})  # Replace pandas NA
+        data = data.where(pd.notnull(data), None)  # Replace numpy NaN
+        
+        # Convert the data to a list of dictionaries and clean the data
+        surveys = []
+        for record in data.to_dict('records'):
+            # Clean each record by replacing NaN, NA, and other invalid values with None
+            cleaned_record = {}
+            for key, value in record.items():
+                if pd.isna(value) or value == 'NaN' or value == 'NA':
+                    cleaned_record[key] = None
+                elif isinstance(value, float) and value.is_integer():
+                    # Convert float to int if it's a whole number
+                    cleaned_record[key] = int(value)
+                else:
+                    cleaned_record[key] = value
+            surveys.append(cleaned_record)
+        
+        # Return only the most recent entry (last row)
+        if surveys:
+            return jsonify([surveys[-1]])  # Return as a single-item list to maintain compatibility
+        return jsonify([])  # Return empty list if no surveys
+            
+    except Exception as e:
+        print(f"Error getting surveys: {e}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':

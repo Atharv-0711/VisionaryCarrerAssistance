@@ -6,12 +6,48 @@ import io
 import base64
 import os
 from datetime import datetime
+import csv
+import sqlite3
+import json
+import hashlib
+from config import settings
 
 # Import sentiment analysis modules
 import sentiment_analysis_rolemodels as rolemodels
 import sentiment_analysis_background as background
 import sentiment_analysis_behavoralimpact as behavioral
 import sentiment_analysis_family_income as income
+
+SURVEY_COLUMNS = [
+    "Name of Child ",
+    "Age",
+    "Class (बच्चे की कक्षा)",
+    "Background of the Child ",
+    "Problems in Home ",
+    "Behavioral Impact",
+    "Academic Performance ",
+    "Family Income ",
+    "Role models",
+    "Reason for such role model ",
+]
+
+
+def _normalize_surveys_value(value):
+    try:
+        if pd.isna(value):
+            return None
+    except TypeError:
+        pass
+    if isinstance(value, str):
+        trimmed = value.strip()
+        return trimmed if trimmed else None
+    return value
+
+
+def _compute_survey_hash(row: dict) -> str:
+    serializable = {column: row.get(column) for column in SURVEY_COLUMNS}
+    payload = json.dumps(serializable, sort_keys=True, ensure_ascii=False)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 def process_survey(survey_data):
     """
@@ -449,11 +485,61 @@ def process_and_save_survey(survey_data):
         except Exception as e:
             print(f"Error saving survey data to Excel: {e}")
             raise e  # Re-raise the exception to be caught by the outer try-except
+
+        # Append to CSV (create with headers if it doesn't exist)
+        try:
+            csv_path = 'Childsurvey.csv'
+            file_exists = os.path.isfile(csv_path)
+            with open(csv_path, mode='a', newline='', encoding='utf-8') as csvfile:
+                writer = csv.DictWriter(csvfile, fieldnames=list(new_row.columns))
+                if not file_exists:
+                    writer.writeheader()
+                writer.writerow(formatted_data)
+            print(f"Survey data appended to {csv_path}")
+        except Exception as e:
+            print(f"Error saving survey data to CSV: {e}")
+
+        # Save to SQLite
+        try:
+            db_path = settings.database_path
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+
+            normalized_row = {
+                column: _normalize_surveys_value(formatted_data.get(column))
+                for column in SURVEY_COLUMNS
+            }
+            survey_hash = _compute_survey_hash(normalized_row)
+            timestamp_value = datetime.utcnow().isoformat()
+
+            columns_sql = ",".join(f'"{col}"' for col in SURVEY_COLUMNS)
+            placeholders = ",".join(["?"] * (len(SURVEY_COLUMNS) + 3))
+            values = [
+                *(normalized_row.get(col) for col in SURVEY_COLUMNS),
+                timestamp_value,
+                survey_hash,
+                "new",
+            ]
+
+            cursor.execute(
+                f"""
+                INSERT OR IGNORE INTO surveys ({columns_sql}, "timestamp", unique_hash, source)
+                VALUES ({placeholders})
+                """,
+                values,
+            )
+            conn.commit()
+            conn.close()
+            print(f"Survey data saved to SQLite at {db_path}")
+        except Exception as e:
+            print(f"Error saving survey data to SQLite: {e}")
         
         # Generate combined dashboard
         combined_dashboard = generate_combined_dashboard(analysis_results)
         analysis_results["combinedDashboard"] = combined_dashboard
         
+        # S3 upload removed (AWS dependency eliminated)
+
         return analysis_results
     
     except Exception as e:

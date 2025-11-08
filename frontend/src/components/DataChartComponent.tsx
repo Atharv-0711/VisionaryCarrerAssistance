@@ -69,26 +69,28 @@ const DataChartComponent: React.FC<{ data: DataProps }> = ({ data }) => {
   }
 
   return (
-    <div className="space-y-8 p-4">
+    <div className="space-y-6 sm:space-y-8 p-4 sm:p-6">
       {/* Charts Section unchanged */}
 
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <h3 className="text-xl font-semibold mb-4">Latest Survey Insights</h3>
+      <div className="bg-white rounded-2xl shadow-sm p-5 sm:p-6">
+        <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">Latest Survey Insights</h3>
         
         {loading && <div>Loading...</div>}
 
         {error && (
-          <div className="text-red-500 p-4 bg-red-50 rounded-lg mb-4">
+          <div className="text-red-500 p-4 bg-red-50 rounded-xl mb-4 text-sm sm:text-base leading-relaxed">
             <strong>Note:</strong> {error}
           </div>
         )}
 
         {!loading && surveyData && (
-          <PsychatricInsights surveyData={surveyData} />
+          <div className="rounded-xl border border-gray-100 overflow-hidden">
+            <PsychatricInsights surveyData={surveyData} />
+          </div>
         )}
 
         {!loading && !surveyData && (
-          <div className="text-center p-4 text-gray-500">
+          <div className="text-center p-4 text-sm text-gray-500">
             No survey data available
           </div>
         )}

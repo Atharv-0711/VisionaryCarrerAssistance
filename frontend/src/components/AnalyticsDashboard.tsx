@@ -1,6 +1,5 @@
 import React from 'react';
 import { BarChart3, Users, Brain, School } from 'lucide-react';
-import DataChartComponent from './DataChartComponent';
 
 // Define TypeScript interfaces for our data structure
 interface BackgroundDetail {
@@ -71,8 +70,8 @@ const AnalyticsDashboard: React.FC<{ data: AnalyticsData | null }> = ({ data }) 
   }
 
   return (
-    <div className="p-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+    <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <StatCard 
           icon={<Users size={24} />}
           title="Total Surveys"
@@ -102,21 +101,7 @@ const AnalyticsDashboard: React.FC<{ data: AnalyticsData | null }> = ({ data }) 
         />
       </div>
 
-      {/* Charts Section */}
-      <DataChartComponent 
-        data={{
-          ...data,
-          income: {
-            below_poverty_line: data.income?.below_poverty_line || 0,
-            below_average: data.income?.below_average || 0,
-            average: data.income?.average || 0,
-            above_average: data.income?.above_average || 0,
-            high_income: data.income?.high_income || 0,
-          }
-        }} 
-      />
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         <AnalysisCard 
           title="Background Analysis" 
           data={data.background} 
@@ -151,19 +136,19 @@ const StatCard: React.FC<StatCardProps> = ({ icon, title, value, label, color })
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+    <div className="bg-white rounded-2xl shadow-sm p-5 sm:p-6 h-full">
       <div className="flex flex-col">
-        <div className={`p-3 rounded-full inline-block ${colorClasses[color]}`}>
+        <div className={`p-2.5 sm:p-3 rounded-full inline-block ${colorClasses[color]}`}>
           {icon}
         </div>
-        <div className="mt-4">
-          <h3 className="text-gray-500 text-sm font-medium">
+        <div className="mt-3 sm:mt-4">
+          <h3 className="text-gray-500 text-xs sm:text-sm font-medium">
             {title}
           </h3>
-          <p className="text-2xl font-bold">
+          <p className="text-xl sm:text-2xl font-bold leading-tight">
             {value}
           </p>
-          {label && <p className="text-gray-500 text-sm">
+          {label && <p className="text-gray-500 text-xs sm:text-sm">
             {label}
           </p>}
         </div>
@@ -210,16 +195,16 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ title, data, color }) => {
   };
 
   return (
-    <div className={`bg-white rounded-lg shadow p-6 border-l-4 ${colorClasses[color]}`}>
-      <h3 className="text-lg font-medium mb-4">{title}</h3>
+    <div className={`bg-white rounded-2xl shadow-sm p-5 sm:p-6 border-l-4 ${colorClasses[color]}`}>
+      <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">{title}</h3>
       <div className="divide-y">
         {data && Object.entries(data).map(([key, value]) => (
           // Skip background_details entries completely - THIS IS ANOTHER OPTION
           key !== 'background_details' ? (
             <div key={key} className="py-2">
-              <div className="flex justify-between">
-                <span className="font-medium">{key.replace(/_/g, ' ').charAt(0).toUpperCase() + key.replace(/_/g, ' ').slice(1)}</span>
-                {typeof value !== 'object' && <span>{renderValue(key, value)}</span>}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
+                <span className="font-medium text-sm sm:text-base">{key.replace(/_/g, ' ').charAt(0).toUpperCase() + key.replace(/_/g, ' ').slice(1)}</span>
+                {typeof value !== 'object' && <span className="text-xs sm:text-sm text-gray-600">{renderValue(key, value)}</span>}
               </div>
               {typeof value === 'object' && value !== null && renderValue(key, value)}
             </div>

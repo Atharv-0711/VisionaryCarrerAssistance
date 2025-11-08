@@ -39,20 +39,20 @@ const IncomeDistribution: React.FC<IncomeDistributionProps> = ({ data }) => {
   ];
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6">
-      <div className="flex items-center mb-6">
+    <div className="bg-white rounded-2xl shadow-sm p-5 sm:p-6 space-y-5">
+      <div className="flex items-center">
         <BarChart className="h-6 w-6 text-orange-600 mr-2" />
-        <h2 className="text-xl font-semibold">Income Distribution</h2>
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Income Distribution</h2>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         <div className="space-y-4">
-          <div className="bg-orange-50 rounded-lg p-4">
-            <h3 className="text-sm font-medium text-orange-800 mb-2">Distribution by Income Level</h3>
+          <div className="bg-orange-50 rounded-xl p-4 sm:p-5">
+            <h3 className="text-sm font-semibold text-orange-800 mb-2">Distribution by Income Level</h3>
             <div className="space-y-3">
               {incomeData.map((item, index) => (
                 <div key={index}>
-                  <div className="flex justify-between text-sm mb-1">
+                  <div className="flex justify-between text-xs sm:text-sm mb-1">
                     <span>{item.label}</span>
                     <span>{item.percentage}%</span>
                   </div>
@@ -69,33 +69,33 @@ const IncomeDistribution: React.FC<IncomeDistributionProps> = ({ data }) => {
         </div>
 
         <div className="space-y-4">
-          <div className="bg-gray-50 rounded-lg p-4">
-            <h3 className="text-sm font-medium text-gray-800 mb-4">Key Metrics</h3>
-            <div className="grid grid-cols-2 gap-4">
+          <div className="bg-gray-50 rounded-xl p-4 sm:p-5">
+            <h3 className="text-sm font-semibold text-gray-800 mb-3">Key Metrics</h3>
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <p className="text-sm text-gray-600">Average Income</p>
-                <p className="text-2xl font-semibold text-orange-600">
+                <p className="text-xs sm:text-sm text-gray-600">Average Income</p>
+                <p className="text-xl sm:text-2xl font-semibold text-orange-600">
                   ₹{data.averageIncome.toLocaleString()}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Total Households</p>
-                <p className="text-2xl font-semibold text-orange-600">
+                <p className="text-xs sm:text-sm text-gray-600">Total Households</p>
+                <p className="text-xl sm:text-2xl font-semibold text-orange-600">
                   {data.total_households.toLocaleString()}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-orange-50 rounded-lg p-4">
-            <h3 className="text-sm font-medium text-orange-800 mb-4">Income Thresholds</h3>
+          <div className="bg-orange-50 rounded-xl p-4 sm:p-5">
+            <h3 className="text-sm font-semibold text-orange-800 mb-3 sm:mb-4">Income Thresholds</h3>
             <div className="space-y-2">
               {Object.entries(data.current_thresholds).map(([key, value]) => (
-                <div key={key} className="flex justify-between text-sm">
+                <div key={key} className="flex justify-between text-xs sm:text-sm">
                   <span className="text-gray-600">
                     {key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                   </span>
-                  <span className="font-medium">₹{value.toLocaleString()}</span>
+                  <span className="font-medium text-gray-800">₹{value.toLocaleString()}</span>
                 </div>
               ))}
             </div>

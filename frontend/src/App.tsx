@@ -6,6 +6,8 @@ import AnalyticsDashboard from './components/AnalyticsDashboard';
 import ResourcesPage from './Resources';
 import AboutPage from './About';
 import PsychiatricInsights from './components/psychatric_insights'; // Ensure this file exists or correct the path
+import DataDrivenPaths from './components/DataDrivenPaths';
+import MentorConnections from './components/MentorConnections';
 
 // Define types for the API response data
 interface BackgroundAnalysisData {
@@ -159,20 +161,20 @@ const Navbar = ({ activeTab, setActiveTab }: { activeTab: string, setActiveTab: 
               Dashboard
             </button>
             <button 
-              onClick={() => handleNavigation('/resources', 'resources')}
+              onClick={() => handleNavigation('/data-driven', 'data-driven')}
               className={`text-sm font-medium ${
-                activeTab === 'resources' ? 'text-purple-600' : 'text-gray-500 hover:text-purple-600 transition-colors'
+                activeTab === 'data-driven' ? 'text-purple-600' : 'text-gray-500 hover:text-purple-600 transition-colors'
               }`}
             >
-              Resources
+              Data-Driven Paths
             </button>
             <button 
-              onClick={() => handleNavigation('/about', 'about')}
+              onClick={() => handleNavigation('/mentors', 'mentors')}
               className={`text-sm font-medium ${
-                activeTab === 'about' ? 'text-purple-600' : 'text-gray-500 hover:text-purple-600 transition-colors'
+                activeTab === 'mentors' ? 'text-purple-600' : 'text-gray-500 hover:text-purple-600 transition-colors'
               }`}
             >
-              About
+              Mentor Connections
             </button>
             <button 
               onClick={() => handleNavigation('/survey', 'survey')}
@@ -251,58 +253,7 @@ function App() {
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <Routes>
             <Route path="/" element={
-              <>
-                <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
-                  <div className="max-w-3xl">
-                    <div className="flex items-center mb-6">
-                      <Brain className="h-10 w-10 text-purple-600" />
-                      <h1 className="text-2xl font-bold ml-4">Visionary Career Assistance</h1>
-                    </div>
-                    <p className="text-gray-600 mb-6">
-                      Empowering students through personalized, data-driven career guidance
-                    </p>
-                    <p className="text-gray-500 text-sm mb-8">
-                      We use advanced analytics and psychological insights to understand your unique circumstances,
-                      identify challenges, and guide you toward a career path aligned with your strengths and interests.
-                    </p>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                      <FeatureCard
-                        icon={<Brain className="h-6 w-6 text-purple-600" />}
-                        title="Psychological Insights"
-                        description="Detect hidden potential through advanced sentiment analysis"
-                      />
-                      <FeatureCard
-                        icon={<BarChart3 className="h-6 w-6 text-purple-600" />}
-                        title="Data-Driven Paths"
-                        description="Personalized career recommendations based on your unique profile"
-                      />
-                      <FeatureCard
-                        icon={<Users className="h-6 w-6 text-purple-600" />}
-                        title="Mentor Connections"
-                        description="Connect with professionals who understand your journey"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <button
-                    onClick={() => setActiveTab('dashboard')}
-                    className="flex items-center justify-center space-x-2 bg-purple-100 hover:bg-purple-200 text-purple-700 p-4 rounded-xl transition-colors"
-                  >
-                    <BarChart3 className="h-5 w-5" />
-                    <span>Dashboard</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('survey')}
-                    className="flex items-center justify-center space-x-2 bg-blue-100 hover:bg-blue-200 text-blue-700 p-4 rounded-xl transition-colors"
-                  >
-                    <BookOpen className="h-5 w-5" />
-                    <span>Take Survey</span>
-                  </button>
-                </div>
-              </>
+              <HomePage activeTab={activeTab} setActiveTab={setActiveTab} />
             } />
             <Route 
               path="/dashboard" 
@@ -315,6 +266,8 @@ function App() {
                 </div>
               } 
             />
+            <Route path="/data-driven" element={<DataDrivenPaths />} />
+            <Route path="/mentors" element={<MentorConnections />} />
             <Route path="/survey" element={<SurveyForm onSubmitSuccess={handleSurveySubmitSuccess} />} />
             <Route path="/resources" element={<ResourcesPage />} />
             <Route path="/about" element={<AboutPage />} />
@@ -324,5 +277,87 @@ function App() {
     </Router>
   );
 }
+
+// New HomePage component
+const HomePage = ({ activeTab, setActiveTab }: { activeTab: string, setActiveTab: (tab: string) => void }) => {
+  const navigate = useNavigate();
+
+  const handleNavigation = (path: string, tab: string) => {
+    navigate(path);
+    setActiveTab(tab);
+  };
+
+  return (
+    <>
+      <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
+        <div className="max-w-3xl">
+          <div className="flex items-center mb-6">
+            <Brain className="h-10 w-10 text-purple-600" />
+            <h1 className="text-2xl font-bold ml-4">Visionary Career Assistance</h1>
+          </div>
+          <p className="text-gray-600 mb-6">
+            Empowering students through personalized, data-driven career guidance
+          </p>
+          <p className="text-gray-500 text-sm mb-8">
+            We use advanced analytics and psychological insights to understand your unique circumstances,
+            identify challenges, and guide you toward a career path aligned with your strengths and interests.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div 
+              className="bg-gray-50 rounded-xl p-6 cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => handleNavigation('/dashboard', 'dashboard')}
+            >
+              <div className="flex items-center mb-4">
+                <Brain className="h-6 w-6 text-purple-600" />
+              </div>
+              <h3 className="text-gray-900 font-medium mb-2">Psychological Insights</h3>
+              <p className="text-gray-500 text-sm">Detect hidden potential through advanced sentiment analysis</p>
+            </div>
+
+            <div 
+              className="bg-gray-50 rounded-xl p-6 cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => handleNavigation('/data-driven', 'data-driven')}
+            >
+              <div className="flex items-center mb-4">
+                <BarChart3 className="h-6 w-6 text-purple-600" />
+              </div>
+              <h3 className="text-gray-900 font-medium mb-2">Data-Driven Paths</h3>
+              <p className="text-gray-500 text-sm">Personalized career recommendations based on your unique profile</p>
+            </div>
+
+            <div 
+              className="bg-gray-50 rounded-xl p-6 cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => handleNavigation('/mentors', 'mentors')}
+            >
+              <div className="flex items-center mb-4">
+                <Users className="h-6 w-6 text-purple-600" />
+              </div>
+              <h3 className="text-gray-900 font-medium mb-2">Mentor Connections</h3>
+              <p className="text-gray-500 text-sm">Connect with professionals who understand your journey</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <button
+          onClick={() => handleNavigation('/dashboard', 'dashboard')}
+          className="flex items-center justify-center space-x-2 bg-purple-100 hover:bg-purple-200 text-purple-700 p-4 rounded-xl transition-colors"
+        >
+          <BarChart3 className="h-5 w-5" />
+          <span>Dashboard</span>
+        </button>
+        <button
+          onClick={() => handleNavigation('/survey', 'survey')}
+          className="flex items-center justify-center space-x-2 bg-blue-100 hover:bg-blue-200 text-blue-700 p-4 rounded-xl transition-colors"
+        >
+          <BookOpen className="h-5 w-5" />
+          <span>Take Survey</span>
+        </button>
+      </div>
+    </>
+  );
+};
 
 export default App;

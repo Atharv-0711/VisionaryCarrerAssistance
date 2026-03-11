@@ -8,14 +8,18 @@ import {
   Mail,
   RefreshCcw,
   Search,
+  Trash2,
+  UserCheck,
 } from 'lucide-react';
 import { apiRequest } from '../utils/api';
 
 interface Student {
   id: number;
+  school_number?: string | null;
   full_name: string;
   unique_code: string;
   age?: number | null;
+  date_of_birth?: string | null;
   class_level?: string | null;
   guardian_contact?: string | null;
   additional_info?: string | null;
@@ -26,9 +30,25 @@ interface StudentAssessmentProps {
   authToken: string;
 }
 
+interface AssessmentSummary {
+  id: number;
+  created_at: string;
+  headline?: string | null;
+  backgroundAverageScore?: number | null;
+  student_id?: number | null;
+}
+
+interface StudentMentorMatch {
+  assessmentId?: number;
+  basedOnTrait?: string | null;
+  backgroundScore?: number | null;
+  recommendations: string[];
+}
+
 const emptyFormState = {
   full_name: '',
   age: '',
+  date_of_birth: '',
   class_level: '',
   guardian_contact: '',
   additional_info: '',
@@ -47,6 +67,9 @@ const StudentAssessment: React.FC<StudentAssessmentProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [lookupCode, setLookupCode] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [mentorMatch, setMentorMatch] = useState<StudentMentorMatch | null>(null);
+  const [loadingMentorMatch, setLoadingMentorMatch] = useState(false);
+  const [deletingStudent, setDeletingStudent] = useState(false);
 
   const focusStudentId = useMemo(() => {
     const state = location.state as { focusStudentId?: number } | null;
@@ -116,6 +139,7 @@ const StudentAssessment: React.FC<StudentAssessmentProps> = ({
       const payload = {
         full_name: formState.full_name.trim(),
         age: formState.age ? Number.parseInt(formState.age, 10) : undefined,
+        date_of_birth: formState.date_of_birth || undefined,
         class_level: formState.class_level.trim(),
         guardian_contact: formState.guardian_contact.trim(),
         additional_info: formState.additional_info.trim(),
@@ -181,6 +205,7 @@ const StudentAssessment: React.FC<StudentAssessmentProps> = ({
         studentId: selectedStudent.id,
         studentName: selectedStudent.full_name,
         studentAge: selectedStudent.age ?? undefined,
+        studentDob: selectedStudent.date_of_birth ?? undefined,
         studentClass: selectedStudent.class_level ?? undefined,
       },
     });
@@ -193,6 +218,143 @@ const StudentAssessment: React.FC<StudentAssessmentProps> = ({
         selectedStudent.full_name
       )}`
     );
+  };
+
+  const buildMentorRecommendations = (assessment?: AssessmentSummary): StudentMentorMatch => {
+    if (!assessment) {
+      return {
+        recommendations: [
+          'No assessment data yet. Take a survey to unlock student-specific mentor matching.',
+          'Start with a General Academic Mentor for baseline guidance.',
+        ],
+      };
+    }
+
+    const trait = (assessment.headline || '').toLowerCase();
+    const recommendations: string[] = [];
+
+    if (trait.includes('lead')) recommendations.push('Leadership Mentor');
+    if (trait.includes('commun')) recommendations.push('Communication Coach');
+    if (trait.includes('analyt')) recommendations.push('STEM / Problem-Solving Mentor');
+    if (trait.includes('creativ') || trait.includes('express'))
+      recommendations.push('Creative Arts Mentor');
+    if (trait.includes('empath')) recommendations.push('Wellbeing Counselor');
+
+    const bg = assessment.backgroundAverageScore;
+    if (typeof bg === 'number' && bg < 2.8) {
+      recommendations.push('Psychosocial Support Mentor');
+    }
+    if (typeof bg === 'number' && bg >= 3.8) {
+      recommendations.push('Career Acceleration Mentor');
+    }
+    if (recommendations.length === 0) {
+      recommendations.push('General Academic Mentor');
+      recommendations.push('Career Guidance Mentor');
+    }
+
+    return {
+      assessmentId: assessment.id,
+      basedOnTrait: assessment.headline ?? null,
+      backgroundScore: assessment.backgroundAverageScore ?? null,
+      recommendations: Array.from(new Set(recommendations)).slice(0, 4),
+    };
+  };
+
+  const fetchMentorMatch = useCallback(async () => {
+    if (!selectedStudent) {
+      setMentorMatch(null);
+      return;
+    }
+
+    setLoadingMentorMatch(true);
+    try {
+      const assessments = await apiRequest<AssessmentSummary[]>(
+        `/api/assessments?student_id=${selectedStudent.id}`,
+        { authToken }
+      );
+      const latest = Array.isArray(assessments) && assessments.length > 0 ? assessments[0] : undefined;
+      setMentorMatch(buildMentorRecommendations(latest));
+    } catch (_err) {
+      setMentorMatch({
+        recommendations: ['Unable to load mentor matching right now.'],
+      });
+    } finally {
+      setLoadingMentorMatch(false);
+    }
+  }, [authToken, selectedStudent]);
+
+  useEffect(() => {
+    fetchMentorMatch();
+  }, [fetchMentorMatch]);
+
+  const handleDeleteStudent = async () => {
+    if (!selectedStudent) return;
+
+    const confirmed = window.confirm(
+      `Delete ${selectedStudent.full_name}? This removes the student profile. Existing assessments stay available but become unlinked.`
+    );
+    if (!confirmed) return;
+
+    setDeletingStudent(true);
+    setError(null);
+    try {
+      try {
+        await apiRequest<{ message: string }>(`/api/students/${selectedStudent.id}`, {
+          method: 'DELETE',
+          authToken,
+        });
+      } catch (primaryError) {
+        const message =
+          primaryError instanceof Error ? primaryError.message.toLowerCase() : '';
+        const shouldFallback =
+          message.includes('method') ||
+          message.includes('not allowed') ||
+          message.includes('405');
+
+        if (!shouldFallback) {
+          throw primaryError;
+        }
+
+        try {
+          await apiRequest<{ message: string }>(`/api/students/${selectedStudent.id}`, {
+            method: 'POST',
+            authToken,
+          });
+        } catch (secondaryError) {
+          const secondaryMessage =
+            secondaryError instanceof Error ? secondaryError.message.toLowerCase() : '';
+          const shouldUseLegacyFallback =
+            secondaryMessage.includes('method') ||
+            secondaryMessage.includes('not allowed') ||
+            secondaryMessage.includes('405');
+
+          if (!shouldUseLegacyFallback) {
+            throw secondaryError;
+          }
+
+          await apiRequest<{ message: string }>(
+            `/api/students/${selectedStudent.id}/delete`,
+            {
+              method: 'POST',
+              authToken,
+            }
+          );
+        }
+      }
+
+      setStudents((prev) => {
+        const remaining = prev.filter((student) => student.id !== selectedStudent.id);
+        setSelectedStudent(remaining.length > 0 ? remaining[0] : null);
+        return remaining;
+      });
+      setMentorMatch(null);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Unable to delete student.';
+      setError(message);
+    } finally {
+      setDeletingStudent(false);
+    }
   };
 
   return (
@@ -266,6 +428,21 @@ const StudentAssessment: React.FC<StudentAssessmentProps> = ({
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">
+                    Date of Birth
+                  </label>
+                  <input
+                    type="date"
+                    value={formState.date_of_birth}
+                    onChange={(event) =>
+                      handleInputChange('date_of_birth', event.target.value)
+                    }
+                    className="mt-1 w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700">
                     Class / Grade
                   </label>
                   <input
@@ -277,34 +454,33 @@ const StudentAssessment: React.FC<StudentAssessmentProps> = ({
                     className="mt-1 w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
                   />
                 </div>
-              </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">
+                    Guardian Contact
+                  </label>
+                  <input
+                    type="text"
+                    value={formState.guardian_contact}
+                    onChange={(event) =>
+                      handleInputChange('guardian_contact', event.target.value)
+                    }
+                    className="mt-1 w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
+                  />
+                </div>
 
-              <div>
-                <label className="text-sm font-medium text-gray-700">
-                  Guardian Contact
-                </label>
-                <input
-                  type="text"
-                  value={formState.guardian_contact}
-                  onChange={(event) =>
-                    handleInputChange('guardian_contact', event.target.value)
-                  }
-                  className="mt-1 w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-gray-700">
-                  Notes
-                </label>
-                <textarea
-                  value={formState.additional_info}
-                  onChange={(event) =>
-                    handleInputChange('additional_info', event.target.value)
-                  }
-                  rows={3}
-                  className="mt-1 w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
-                />
+                <div>
+                  <label className="text-sm font-medium text-gray-700">
+                    Notes
+                  </label>
+                  <textarea
+                    value={formState.additional_info}
+                    onChange={(event) =>
+                      handleInputChange('additional_info', event.target.value)
+                    }
+                    rows={3}
+                    className="mt-1 w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
+                  />
+                </div>
               </div>
 
               <button
@@ -384,6 +560,9 @@ const StudentAssessment: React.FC<StudentAssessmentProps> = ({
                           <p className="text-xs text-gray-500 mt-0.5">
                             Code: {student.unique_code}
                           </p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            School No: {student.school_number || 'N/A'}
+                          </p>
                         </div>
                         <div className="text-xs text-gray-400">
                           {new Date(student.created_at).toLocaleDateString()}
@@ -412,6 +591,12 @@ const StudentAssessment: React.FC<StudentAssessmentProps> = ({
                 <p className="text-sm text-gray-500">
                   Student Code: <span className="font-medium">{selectedStudent.unique_code}</span>
                 </p>
+                <p className="text-sm text-gray-500">
+                  School Number: <span className="font-medium">{selectedStudent.school_number || 'N/A'}</span>
+                </p>
+                <p className="text-sm text-gray-500">
+                  Date of Birth: <span className="font-medium">{selectedStudent.date_of_birth || 'Not set'}</span>
+                </p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <button
@@ -429,6 +614,14 @@ const StudentAssessment: React.FC<StudentAssessmentProps> = ({
                   <span>View Assessments</span>
                 </button>
               </div>
+              <button
+                onClick={handleDeleteStudent}
+                disabled={deletingStudent}
+                className="w-full rounded-lg border border-red-200 px-4 py-3 min-h-[44px] text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60 flex items-center justify-center space-x-2"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>{deletingStudent ? 'Deleting Student...' : 'Delete Student'}</span>
+              </button>
               {selectedStudent.guardian_contact && (
                 <div className="rounded-lg bg-purple-50 p-4 text-sm text-purple-800">
                   Guardian Contact: {selectedStudent.guardian_contact}
@@ -439,6 +632,35 @@ const StudentAssessment: React.FC<StudentAssessmentProps> = ({
                   {selectedStudent.additional_info}
                 </div>
               )}
+              <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+                <div className="flex items-center space-x-2 mb-2">
+                  <UserCheck className="h-4 w-4 text-green-700" />
+                  <p className="text-sm font-semibold text-green-800">
+                    Mentor Matching for this Student
+                  </p>
+                </div>
+                {loadingMentorMatch ? (
+                  <p className="text-sm text-green-700">Loading mentor matching...</p>
+                ) : (
+                  <div className="space-y-2">
+                    {mentorMatch?.basedOnTrait && (
+                      <p className="text-xs text-green-700">
+                        Based on top trait: <span className="font-medium">{mentorMatch.basedOnTrait}</span>
+                      </p>
+                    )}
+                    {typeof mentorMatch?.backgroundScore === 'number' && (
+                      <p className="text-xs text-green-700">
+                        Background score: <span className="font-medium">{mentorMatch.backgroundScore.toFixed(2)}</span>
+                      </p>
+                    )}
+                    <ul className="text-sm text-green-800 list-disc pl-5 space-y-1">
+                      {(mentorMatch?.recommendations || ['No mentor suggestions available yet.']).map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

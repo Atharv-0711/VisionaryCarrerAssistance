@@ -4,9 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import io
 import base64
-import os
 from datetime import datetime
-import csv
 import sqlite3
 import json
 import hashlib
@@ -17,6 +15,7 @@ import sentiment_analysis_rolemodels as rolemodels
 import sentiment_analysis_background as background
 import sentiment_analysis_behavoralimpact as behavioral
 import sentiment_analysis_family_income as income
+import sentiment_analysis_problems_in_home as home_problems
 
 SURVEY_COLUMNS = [
     "Name of Child ",
@@ -30,8 +29,23 @@ SURVEY_COLUMNS = [
     "Role models",
     "Reason for such role model ",
 ]
-
-
+SURVEY_COLUMN_ALIASES = {
+    "Name of Child ": ["Name of Child ", "Name of Child"],
+    "Age": ["Age"],
+    "Class (बच्चे की कक्षा)": ["Class (बच्चे की कक्षा)"],
+    "Background of the Child ": ["Background of the Child ", "Background of the Child"],
+    "Problems in Home ": ["Problems in Home ", "Problems in Home"],
+    "Behavioral Impact": ["Behavioral Impact"],
+    "Academic Performance ": ["Academic Performance ", "Academic Performance"],
+    "Family Income ": ["Family Income ", "Family Income"],
+    "Role models": ["Role models", "Role Models"],
+    "Reason for such role model ": [
+        "Reason for such role model ",
+        "Reason for such role model",
+        "Reason for Such Role Model",
+        "Reason for role model ",
+    ],
+}
 def _normalize_surveys_value(value):
     try:
         if pd.isna(value):
@@ -42,6 +56,13 @@ def _normalize_surveys_value(value):
         trimmed = value.strip()
         return trimmed if trimmed else None
     return value
+
+
+def _extract_survey_value(payload: dict, canonical_column: str):
+    for key in SURVEY_COLUMN_ALIASES.get(canonical_column, [canonical_column]):
+        if key in payload:
+            return payload.get(key)
+    return None
 
 
 def _compute_survey_hash(row: dict) -> str:
@@ -60,8 +81,14 @@ def process_survey(survey_data):
         dict: Analysis results with embedded visualizations
     """
     try:
+        # Ensure survey_data has all required columns with correct names
+        normalized_survey = {}
+        for col in SURVEY_COLUMNS:
+            # Try exact match first
+            normalized_survey[col] = _extract_survey_value(survey_data, col)
+        
         # Convert single survey to DataFrame format for compatibility with analysis modules
-        df = pd.DataFrame([survey_data])
+        df = pd.DataFrame([normalized_survey])
         
         # Perform sentiment analysis using each module
         try:
@@ -72,9 +99,34 @@ def process_survey(survey_data):
         
         try:
             background_results = background.get_background_sentiment(df)
+            # Ensure background_results has the expected structure
+            if not background_results or not isinstance(background_results, dict):
+                background_results = {
+                    "positive_count": 0,
+                    "negative_count": 0,
+                    "neutral_count": 0,
+                    "average_score": 0,
+                    "highly_positive": 0,
+                    "positive": 0,
+                    "neutral": 0,
+                    "negative": 0,
+                    "highly_negative": 0,
+                    "background_details": []
+                }
         except Exception as e:
             print(f"Error in background analysis: {e}")
-            background_results = {}
+            background_results = {
+                "positive_count": 0,
+                "negative_count": 0,
+                "neutral_count": 0,
+                "average_score": 0,
+                "highly_positive": 0,
+                "positive": 0,
+                "neutral": 0,
+                "negative": 0,
+                "highly_negative": 0,
+                "background_details": []
+            }
         
         try:
             behavioral_results = behavioral.analyze_behavioral_impact(df)
@@ -87,6 +139,12 @@ def process_survey(survey_data):
         except Exception as e:
             print(f"Error in income analysis: {e}")
             income_results = {}
+
+        try:
+            home_problems_results = home_problems.analyze_problems_in_home(df)
+        except Exception as e:
+            print(f"Error in home problems analysis: {e}")
+            home_problems_results = {}
         
         # Generate visualizations
         role_model_viz = generate_role_model_visualization(role_model_results)
@@ -111,6 +169,9 @@ def process_survey(survey_data):
             "income": {
                 "analysis": income_results,
                 "visualization": income_viz
+            },
+            "homeProblems": {
+                "analysis": home_problems_results
             },
             "timestamp": datetime.now().isoformat()
         }
@@ -431,7 +492,7 @@ def generate_combined_dashboard(results):
 
 def process_and_save_survey(survey_data):
     """
-    Process survey data, perform sentiment analysis, save to Excel, and return results
+    Process survey data, perform sentiment analysis, save to SQLite, and return results
     
     Args:
         survey_data (dict): Dictionary containing survey form data
@@ -443,19 +504,12 @@ def process_and_save_survey(survey_data):
         # Process the survey data
         analysis_results = process_survey(survey_data)
         
-        # Load existing data
-        excel_path = 'Childsurvey.xlsx'
-        try:
-            existing_data = pd.read_excel(excel_path)
-        except Exception as e:
-            print(f"Error loading existing data: {e}")
-            existing_data = pd.DataFrame()
-        
         # Ensure survey_data is properly formatted for Excel
         formatted_data = {}
         survey_columns = [
             "Name of Child ",
             "Age",
+            "Date of Birth",
             "Class (बच्चे की कक्षा)",
             "Background of the Child ",
             "Problems in Home ",
@@ -467,38 +521,13 @@ def process_and_save_survey(survey_data):
         ]
         
         for col in survey_columns:
-            if col in survey_data:
-                formatted_data[col] = survey_data[col]
+            if col == "Date of Birth":
+                formatted_data[col] = survey_data.get("Date of Birth")
+            elif col in SURVEY_COLUMNS:
+                formatted_data[col] = _extract_survey_value(survey_data, col)
             else:
                 formatted_data[col] = None
         
-        # Convert to DataFrame
-        new_row = pd.DataFrame([formatted_data])
-        
-        # Combine with existing data
-        updated_data = pd.concat([existing_data, new_row], ignore_index=True)
-        
-        # Save to Excel
-        try:
-            updated_data.to_excel(excel_path, index=False)
-            print(f"Survey data saved to {excel_path}")
-        except Exception as e:
-            print(f"Error saving survey data to Excel: {e}")
-            raise e  # Re-raise the exception to be caught by the outer try-except
-
-        # Append to CSV (create with headers if it doesn't exist)
-        try:
-            csv_path = 'Childsurvey.csv'
-            file_exists = os.path.isfile(csv_path)
-            with open(csv_path, mode='a', newline='', encoding='utf-8') as csvfile:
-                writer = csv.DictWriter(csvfile, fieldnames=list(new_row.columns))
-                if not file_exists:
-                    writer.writeheader()
-                writer.writerow(formatted_data)
-            print(f"Survey data appended to {csv_path}")
-        except Exception as e:
-            print(f"Error saving survey data to CSV: {e}")
-
         # Save to SQLite
         try:
             db_path = settings.database_path

@@ -10,7 +10,7 @@ const getDefaultApiBaseUrl = (): string => {
       return origin;
     }
   }
-  return 'http://localhost:5000';
+  return 'http://localhost:5053';
 };
 
 export const API_BASE_URL =

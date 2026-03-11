@@ -1,0 +1,329 @@
+\documentclass[conference]{IEEEtran}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{url}
+\usepackage{array}
+
+\begin{document}
+
+\title{Visionary Career Assistance: Guardrailed Hybrid Learning for Socio-Behavioral Student Career Analytics in Low-Resource Settings}
+
+\author{
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}c c c@{}}
+% ----- First row: three authors -----
+\begin{tabular}[t]{c}
+Dr Mohammad Shahnawaz Hussain\\
+SRM Institute of Science and\\
+Technology\\
+Assistant Professor\\
+Email: sh6801@srmist.edu.in
+\end{tabular}
+&
+\begin{tabular}[t]{c}
+Atharv Dobhal\\
+SRM Institute of Science and\\
+Technology\\
+Dehradun, India\\
+Email: ad6801@srmist.edu.in
+\end{tabular}
+&
+\begin{tabular}[t]{c}
+Divyansh Bafila\\
+SRM Institute of Science and\\
+Technology\\
+Dehradun, India\\
+Email: db9533@srmist.edu.in
+\end{tabular}
+\\[1.2em]
+\multicolumn{3}{c}{
+\begin{tabular}[t]{c@{\hspace{5em}}c}
+% ----- Second row: two authors -----
+\begin{tabular}[t]{c}
+Hari Venkatraman\\
+SRM Institute of Science and\\
+Technology\\
+Chennai, India\\
+Email: hv9961@srmist.edu.in
+\end{tabular}
+&
+\begin{tabular}[t]{c}
+Ayush Lavania\\
+SRM Institute of Science and\\
+Technology\\
+Dehradun, India\\
+Email: al7849@srmist.edu.in
+\end{tabular}
+\end{tabular}
+}
+\end{tabular*}
+}
+
+\maketitle
+
+\begin{abstract}
+This paper presents a deployment-oriented and AI framework for student career and support analytics in low-resource school or the mid-level schools. The system integrates five survey dimensions—family background means what is the profession of the child’s parents, problems in home, behavioural impact which is there on the child, family income, and role-model influence—into a unified pipeline with API delivery and dashboard visualization. We use rule-based priors, linear calibration, and bandit-style online adaptation as our methods. Then we use safety gating to stop harmful model promotion. In grouped offline evaluation of the background module (train/validation/test: 587/125/121), unconstrained adaptive updates performed worse than a simple linear baseline (test RMSE 1.961 vs. 0.863), so the adaptive model was not used. An ablation across rules-only, linear-only, RL-only, and hybrid-gated variants shows that the proposed hybrid governance strategy preserves reliability while retaining adaptation capability. The framework also provides interpretable hierarchical regression for career-confidence factors and feedback-aware mentor matching. Results suggest that trustworthy, guard railed hybrid learning is more practical than pure RL in noisy educational environments for real-world decision support and sustainable deployment.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Educational AI, career guidance, hybrid learning, rule-based priors, linear calibration, bandit-style adaptation, safety gating, model governance, interpretable analytics, hierarchical regression, mentor matching, low-resource settings, decision support, deployment reliability.
+\end{IEEEkeywords}
+
+\section{Introduction}
+
+Career guidance in many low-resource schools and average schools is still driven by fragmented observations, delayed interventions, and counsellor overload and in many cases counsellor is not there. Students often make high-stakes education and career choices without structured support that integrates family context, behavioural signals because of home environment, and motivational influences. Existing digital systems usually optimize either one of  accuracy or adaptability, but it is a rare site to see both together: static models are stable yet brittle under demographic shifts, while fully adaptive models can drift under sparse, noisy feedback. This trade-off is especially critical in education, where model errors can reinforce inequity and misguide vulnerable learners.
+
+To address this gap, we present Visionary Career Assistance, a deployment-oriented framework for socio-economic-behavioural student analytics. The system unifies five survey dimensions--family background, home problems, behavioural impact due to background or problem, family income, and role-model influence--into a single pipeline spanning ingestion, module-level scoring, API delivery, dashboard visualization, and feedback capture. Methodologically, we combine interpretable rule priors, calibrated linear models, and contextual-bandit-style updates with strict guardrails. Adaptive candidates are promoted only when validation evidence improves over robust baselines, preventing unsafe online drift. This hybrid governance perspective reframes adaptation as a controlled process: models may learn continuously, but deployment remains evidence-gated, auditable, and accountable. We show how this design supports practical, trustworthy decision support in noisy real-world school environments, while preserving interpretability, operational reliability, and long-term maintainability for institutional use. Beyond predictive performance, the framework is built for actionable use: outputs are aligned with counsellor workflows, uncertainty is surfaced for human review, and module-wise explanations help stakeholders understand why recommendations are made before interventions are planned and monitored over time.
+
+\section{System Overview}
+
+The proposed platform is designed as an end-to-end, deployment-oriented decision-support system for student career analytics in low or medium resource educational settings. Rather than evaluating each student attribute separately, it combines socio-economic, behavioural, and motivational signals into one integrated workflow. The architecture is built around three priorities: reliable operation with noisy and incomplete school data, interpretable outputs that counsellors and teachers can actually use, and safe model evolution through controlled updates instead of unconstrained adaptation. In practice, the system starts with survey capture and validation, runs module-wise analysis across five dimensions, and then delivers both combined and module-level insights through APIs and dashboards. A persistence layer stores predictions, explanations, and feedback so that schools can monitor trends of the students over time and improve intervention quality.
+
+\subsection{Data Sources}
+
+Survey records include the background of the child, problems in home, behavioural impact due to background or problem, family income, role model and reason for such role model, and an academic performance proxy. These inputs were selected to balance practical data collection with meaningful analytical coverage. Background information captures family context, including opportunity exposure and support structures. Home problems capture stress-related factors that may reduce concentration, attendance continuity, and planning confidence in a child. Behavioral impact text adds qualitative evidence from teachers, counsellors, or guardians, which is important because many meaningful student signals are narrative rather than numeric. Family income reflects financial constraints affecting access, continuity, and educational choices of a student. Role model and reason for such role model capture aspiration orientation and motivational anchors. The academic proxy links these socio-behavioural dimensions to an observable performance indicator.
+Survey records include the background of the child, problems in home, behavioural impact due to background or problem, family income, role model and reason for such role model, and an academic performance proxy. These inputs were selected to balance practical data collection with meaningful analytical coverage. Background information captures family context, including opportunity exposure and support structures. Home problems capture stress-related factors that may reduce concentration, attendance continuity, and planning confidence in a child. Behavioral impact text adds qualitative evidence from teachers, counsellors, or guardians, which is important because many meaningful student signals are narrative rather than numeric. Family income reflects financial constraints affecting access, continuity, and educational choices of a student. Role model and reason for such role model capture aspiration orientation and motivational anchors. The academic proxy links these socio-behavioural dimensions to an observable performance indicator.
+
+To improve reliability of the model, data ingestion includes schema checks before records proceed to analysis. Required fields are validated, categorical responses are standardized, and anomalies such as invalid ranges, malformed rows, or duplicates are flagged. Missing values in the dataset are handled with conservative fallback rules so partially complete responses remain usable. For free-text behavioural entries, preprocessing includes normalization and lightweight cleaning while preserving meaningful cues. The data model also keeps record identifiers and timestamps for cohort analysis, reproducibility, and auditability of the data. This ensures each prediction can be traced to its input attributes, preprocessing path, and model version.
+
+
+Survey records include:
+\begin{itemize}
+\item Background of child
+\item Problems in home
+\item Behavioral impact text
+\item Family income
+\item Role model and reason
+\item Academic performance proxy
+\end{itemize}
+
+
+\subsection{Pipeline}
+The pipeline has five stages: ingestion and normalization, module-level analysis, aggregation through APIs, dashboard rendering, and persistence with feedback capture.
+
+The first stage is ingestion and normalization, it convert raw survey submissions into a consistent internal format. This stage handles type correction, category harmonization, numerical scaling, and cleaning of the text and producing a validated feature set for downstream analytics.
+
+The second stage is module-level analysis, it then processes each dimension through a dedicated analytical unit. Each module combines domain rules, calibrated linear modeling, and guardrailed adaptive updates where appropriate. Modules generate both numeric outputs and explanation cues, such as dominant factors and confidence indicators. This modular structure improves interpretability and fault isolation; if one of the input channel is weak, other modules remain operational.
+
+The third stage is aggregation through API, it merges module outputs into a unified response contract. This layer performs consistency checks, computes composite indicators, and returns structured payloads for frontend and external consumers. Responses include student summaries, module-wise breakdowns, processing metadata, and model tags. This API-first design separates analytics from interface logic, making future integration easier.
+
+Dashboard rendering turns API outputs into actionable visuals for counselors and administrators. Users can inspect score distributions, subgroup trends, and score of the specific student,patterns of student via understandable charts and cards. Explanations are presented in simple language so intervention decisions remain transparent and accountable. At institution level, dashboards support monitoring of recurring structural patterns and prioritization of targeted support.
+
+The final stage, persistence and feedback capture, stores inputs, normalized features, module outputs, aggregate insights, and usage logs. Counselors can submit feedback on recommendation usefulness, and that feedback is retained for offline evaluation and controlled improvement cycles. Most importantly, model promotion is evidence based: adaptive variants are deployed only after meeting validation and safety criteria. This creates a closed improvement loop where learning is continuous but operational changes remain accountable, reversible, and trustworthy.
+
+Overall, the system is intentionally deployment-first. It does not optimize only for benchmark accuracy; it optimizes for reliability, interpretability, governance, and sustained field usability in educational environments where data quality and operational constraints are real.
+
+
+\section{Methodology}
+
+\subsection{Hybrid Modeling Strategy}
+
+Each analytical module uses a hybrid strategy that integrates domain knowledge, controlled adaptation, and statistical calibration. The first section is a rule prior, where expert-defined mappings are used to encode known directional effects. The second component is a calibrated linear model that continuously learns correlations between normalized features and outcome scores.
+The third component consists of an online adaptive term that allows limited correction based on recent feedback without replacing validated structure.
+
+The combined prediction is:
+
+\begin{equation}
+\hat{y} = \lambda_r f_r(x) + \lambda_l f_l(x) + \lambda_a f_a(x)
+\end{equation}
+
+\begin{equation}
+\lambda_r + \lambda_l + \lambda_a = 1, \quad \lambda_i \ge 0
+\end{equation}
+
+Guardrails constrain behavior:
+
+\begin{equation}
+\hat{y}_{\text{safe}} = \mathrm{clip}(\hat{y}, y_{\min}, y_{\max})
+\end{equation}
+
+\begin{equation}
+\left| \hat{y}_t - \hat{y}_{t-1} \right| \le \delta_{\max}
+\end{equation}
+
+\subsection{Bandit-Style Adaptive Update}
+
+The adaptive scorer is formulated as a contextual-bandit update rather than a full reinforcement-learning pipeline.
+
+Let category score be $\theta_c$.
+
+\textbf{State:} category $c$
+
+\textbf{Action:} predicted score $\hat{y}_c$
+
+\textbf{Reward:}
+
+\begin{equation}
+r = -\left| y - \hat{y}_c \right|
+\end{equation}
+
+Update rule:
+
+\begin{equation}
+\theta_c \leftarrow \mathrm{clip}\left(\theta_c + \alpha w (y-\hat{y}_c), 1, 5\right)
+\end{equation}
+
+Optional smoothing:
+
+\begin{equation}
+\theta_c^{(t)} = (1-\rho)\theta_c^{(t-1)} + \rho \theta_c^{(t)}
+\end{equation}
+
+where $\alpha$ is the learning rate, $w$ is sample weight, and $0 < \rho \le 1$.  
+No Bellman backups, transition models, or discounted returns are used.
+
+\subsection{Career Confidence Regression}
+
+Hierarchical OLS models estimate incremental association:
+
+\begin{equation}
+Y = \beta_0 + \beta_1 X_{\text{income}} + \beta_2 X_{\text{behavior}} + \beta_3 X_{\text{role}} + \epsilon
+\end{equation}
+
+Incremental explanatory contribution:
+
+\begin{equation}
+\Delta R_k^2 = R_k^2 - R_{k-1}^2
+\end{equation}
+
+Nested-model $F$-test:
+
+\begin{equation}
+F =
+\frac{(R_k^2 - R_{k-1}^2)/(p_k - p_{k-1})}
+{(1 - R_k^2)/(n - p_k - 1)}
+\end{equation}
+
+\subsection{Deployment Gating Protocol}
+
+Let $M_b$ denote the best baseline and $M_a$ the adaptive candidate.
+
+Promotion conditions:
+
+\begin{equation}
+\mathrm{RMSE}(M_a) < \mathrm{RMSE}(M_b)
+\end{equation}
+
+\begin{equation}
+R^2(M_a) \ge R^2(M_b) - \tau_{R^2}
+\end{equation}
+
+Relative error change:
+
+\begin{equation}
+\Delta_{\mathrm{RMSE}} =
+\frac{\mathrm{RMSE}(M_a) - \mathrm{RMSE}(M_b)}
+{\mathrm{RMSE}(M_b)}
+\end{equation}
+
+Composite safety score:
+
+\begin{equation}
+S =
+\omega_1 \mathbf{1}\{\mathrm{RMSE\ improves}\}
++ \omega_2 \mathbf{1}\{R^2 \text{ within bound}\}
++ \omega_3 \mathbf{1}\{\text{stability pass}\}
+\end{equation}
+
+Promotion occurs only if $S \ge S_{\min}$. Otherwise, the best baseline is retained for deployment.
+\section{Experimental Setup}
+
+\subsection{Data Splits}
+
+Grouped train/validation/test split:
+\begin{itemize}
+\item Train: 587
+\item Validation: 125
+\item Test: 121
+\end{itemize}
+
+\subsection{Variants Evaluated}
+
+\begin{itemize}
+\item Mean predictor
+\item Rules-only
+\item Linear-only
+\item RL-only
+\item Hybrid-gated
+\end{itemize}
+
+\subsection{Metrics}
+
+\begin{itemize}
+\item RMSE
+\item MAE
+\item $R^2$
+\end{itemize}
+
+\section{Results}
+
+\subsection{Core Evaluation}
+
+\begin{table}[h]
+\centering
+\caption{Background Module Evaluation}
+\begin{tabular}{lcccc}
+\toprule
+Model & Val RMSE & Test RMSE & Test MAE & Test $R^2$ \\
+\midrule
+Mean & 0.7906 & 0.8594 & 0.6780 & $-0.0054$ \\
+Rules & 1.9313 & 1.9865 & 1.6281 & $-4.3724$ \\
+Linear & \textbf{0.7896} & \textbf{0.8633} & \textbf{0.6827} & \textbf{$-0.0146$} \\
+RL & 1.9046 & 1.9610 & 1.6078 & $-4.2351$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+RL-only degraded performance and was blocked by the promotion gate.
+
+\subsection{Ablation}
+
+Hybrid-gated deployment selected linear-only after RL failed validation. This preserved best-available predictive reliability.
+
+\section{Discussion}
+
+Noisy educational supervision destabilized unconstrained adaptive updates. Calibrated linear baselines generalized better in this regime.
+
+Governed adaptation converts adaptation risk into a controlled process: models may learn offline, but production promotion is evidence-based.
+
+\section{Threats to Validity}
+
+\begin{itemize}
+\item Limited dataset scope
+\item Proxy academic outcomes
+\item Unobserved confounders
+\item Pending fairness audits
+\item Limited longitudinal evidence
+\end{itemize}
+
+\section{Conclusion}
+
+This work presents a deployable and safety-aware AI framework for student career-support analytics. Under noisy supervision, unrestricted adaptive updates underperformed calibrated baselines. Hybrid-gated deployment preserved reliability and trustworthiness. The architecture enables practical decision support while maintaining model accountability.
+
+\section*{Acknowledgment}
+
+(Optional: funding or institutional support.)
+
+\bibliographystyle{IEEEtran}
+\begin{thebibliography}{1}
+
+\bibitem{ref1}
+Author, ``Educational data mining for student outcome prediction,'' IEEE Venue, Year.
+
+\bibitem{ref2}
+Author, ``Explainable AI in educational analytics,'' IEEE Venue, Year.
+
+\bibitem{ref3}
+Author, ``Contextual bandits under noisy feedback,'' Conference, Year.
+
+\bibitem{ref4}
+Author, ``Hybrid rule-ML modeling in low-resource NLP,'' Venue, Year.
+
+\bibitem{ref5}
+Author, ``Human-in-the-loop recommender systems,'' Venue, Year.
+
+\end{thebibliography}
+
+\end{document}

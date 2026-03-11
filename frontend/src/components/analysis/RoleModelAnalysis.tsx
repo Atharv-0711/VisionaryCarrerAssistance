@@ -1,5 +1,6 @@
 import React from 'react';
 import { Users } from 'lucide-react';
+import { formatCorrelation, formatInsightScore, INSIGHT_TITLES } from '../../utils/insightPresentation';
 
 interface RoleModelAnalysisProps {
   data?: {
@@ -8,6 +9,8 @@ interface RoleModelAnalysisProps {
     negativeImpact: number;
     influentialCount: number;
     totalTraits: number;
+    sentimentScore?: number;
+    academicCorrelation?: number;
     topTraits: {
       [key: string]: number;
     };
@@ -27,9 +30,12 @@ const RoleModelAnalysis: React.FC<RoleModelAnalysisProps> = ({ data }) => {
   }
 
   const totalImpact = data.positiveImpact + data.neutralImpact + data.negativeImpact;
-  const positivePercentage = ((data.positiveImpact / totalImpact) * 100).toFixed(1);
-  const neutralPercentage = ((data.neutralImpact / totalImpact) * 100).toFixed(1);
-  const negativePercentage = ((data.negativeImpact / totalImpact) * 100).toFixed(1);
+  const positivePercentage = totalImpact > 0 ? ((data.positiveImpact / totalImpact) * 100).toFixed(1) : '0.0';
+  const neutralPercentage = totalImpact > 0 ? ((data.neutralImpact / totalImpact) * 100).toFixed(1) : '0.0';
+  const negativePercentage = totalImpact > 0 ? ((data.negativeImpact / totalImpact) * 100).toFixed(1) : '0.0';
+  const roleCorrelation =
+    typeof data.academicCorrelation === 'number' ? data.academicCorrelation : null;
+  const roleCorrelationPercent = roleCorrelation !== null ? roleCorrelation * 100 : null;
 
   console.log('Calculated percentages:', {
     positive: positivePercentage,
@@ -42,7 +48,7 @@ const RoleModelAnalysis: React.FC<RoleModelAnalysisProps> = ({ data }) => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div className="flex items-center">
           <Users className="h-6 w-6 text-purple-600 mr-2" />
-          <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Role Model Analysis</h2>
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-900">{INSIGHT_TITLES.roleModel}</h2>
         </div>
         <p className="text-xs text-gray-500 sm:hidden">Positive influences at a glance.</p>
       </div>
@@ -101,6 +107,19 @@ const RoleModelAnalysis: React.FC<RoleModelAnalysisProps> = ({ data }) => {
               <div>
                 <p className="text-xs sm:text-sm text-gray-600">Total Traits</p>
                 <p className="text-xl sm:text-2xl font-semibold text-blue-600">{data.totalTraits}</p>
+              </div>
+              <div>
+                <p className="text-xs sm:text-sm text-gray-600">Sentiment Score</p>
+                <p className="text-xl sm:text-2xl font-semibold text-blue-600">
+                  {formatInsightScore(data.sentimentScore)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs sm:text-sm text-gray-600">Academic Correlation</p>
+                <p className="text-xl sm:text-2xl font-semibold text-blue-600">
+                  {formatCorrelation(roleCorrelation)}
+                </p>
+                <p className="text-xs text-gray-500">Scale: -1 to +1</p>
               </div>
             </div>
           </div>

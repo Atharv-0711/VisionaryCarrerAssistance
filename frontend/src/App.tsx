@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Brain, BarChart3, BookOpen, Users, Menu, X } from 'lucide-react';
-import { BrowserRouter as Router, Routes, Route, Link, useNavigate, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import io from 'socket.io-client';
 import SurveyForm from './components/SurveyForm';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
@@ -9,6 +9,7 @@ import AboutPage from './About';
 import PsychiatricInsights from './components/psychatric_insights'; // Ensure this file exists or correct the path
 import DataDrivenPaths from './components/DataDrivenPaths';
 import MentorConnections from './components/MentorConnections';
+import DataQualityMonitoring from './components/DataQualityMonitoring';
 import LoginPage from './components/auth/LoginPage';
 import SignupPage from './components/auth/SignupPage';
 import VerifyEmailPage from './components/auth/VerifyEmailPage';
@@ -27,6 +28,9 @@ interface BackgroundAnalysisData {
   neutral: number;
   negative: number;
   highly_negative: number;
+  academic_correlation?: number;
+  training_samples?: number;
+  model_updated?: boolean;
 }
 
 interface BehavioralAnalysisData {
@@ -37,6 +41,7 @@ interface BehavioralAnalysisData {
   highly_negative_count: number;
   average_score: number;
   total_responses: number;
+  academic_correlation?: number;
 }
 
 interface RoleModelAnalysisData {
@@ -45,6 +50,8 @@ interface RoleModelAnalysisData {
   negativeImpact: number;
   influentialCount: number;
   totalTraits: number;
+  sentimentScore?: number;
+  academicCorrelation?: number;
   topTraits: {
     [key: string]: number;
   };
@@ -64,6 +71,18 @@ interface IncomeAnalysisData {
     below_average: number;
     average: number;
   };
+  academic_correlation?: number;
+  income_academic_correlation?: number;
+  training_samples?: number;
+  model_updated?: boolean;
+  income_academic_profile?: Array<{
+    category: string;
+    households: number;
+    avg_income: number | null;
+    avg_academic_score: number | null;
+    rl_expected_academic_score: number;
+  }>;
+  rl_expected_academic_by_category?: Record<string, number>;
 }
 
 interface AnalysisData {
@@ -71,6 +90,10 @@ interface AnalysisData {
   behavioral: BehavioralAnalysisData;
   rolemodel: RoleModelAnalysisData;
   income: IncomeAnalysisData;
+  home_problems?: {
+    average_score?: number;
+    academic_correlation?: number;
+  };
   totalSurveys: number;
 }
 
@@ -86,6 +109,13 @@ interface SurveyData {
   "Problems in Home ": string;
   "Behavioral Impact": string;
   "Reason for such role model ": string;
+}
+
+interface AssessmentDetail {
+  id: number;
+  created_at: string;
+  survey_data: Record<string, unknown>;
+  scores: Record<string, unknown>;
 }
 
 type UserRole = 'school_admin' | 'mentor';
@@ -116,7 +146,12 @@ const ProtectedRoute = ({ user, allowedRoles, children }: ProtectedRouteProps) =
 
 const Navbar = ({ activeTab, setActiveTab, user, onLogout }: { activeTab: string, setActiveTab: (tab: string) => void, user: AuthUser | null, onLogout: () => void }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
   
   const handleNavigation = (path: string, tab: string) => {
     navigate(path);
@@ -144,6 +179,11 @@ const Navbar = ({ activeTab, setActiveTab, user, onLogout }: { activeTab: string
         ...(user.role === 'school_admin'
           ? [
               {
+                key: 'monitoring',
+                label: 'Monitoring',
+                path: '/monitoring',
+              },
+              {
                 key: 'student-assessment',
                 label: 'Take Survey',
                 path: '/student-assessment',
@@ -164,7 +204,7 @@ const Navbar = ({ activeTab, setActiveTab, user, onLogout }: { activeTab: string
   ];
   
   return (
-    <nav className="bg-white shadow-sm">
+    <nav className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-purple-100 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           <div className="flex items-center">
@@ -183,7 +223,7 @@ const Navbar = ({ activeTab, setActiveTab, user, onLogout }: { activeTab: string
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen((prev) => !prev)}
-                className="inline-flex items-center justify-center rounded-md p-2 text-gray-600 hover:text-purple-600 hover:bg-purple-50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="inline-flex items-center justify-center rounded-md p-2 text-gray-600 hover:text-purple-600 hover:bg-purple-50 active:scale-95 transition-transform focus:outline-none focus:ring-2 focus:ring-purple-500"
                 aria-label="Toggle navigation"
               >
                 {mobileMenuOpen ? (
@@ -217,7 +257,7 @@ const Navbar = ({ activeTab, setActiveTab, user, onLogout }: { activeTab: string
                   <button
                     key={link.key}
                     onClick={() => handleNavigation(link.path, link.key)}
-                    className={`text-sm font-medium ${
+                    className={`text-sm font-medium active:scale-95 transition-transform ${
                       activeTab === link.key
                         ? 'text-purple-600'
                         : 'text-gray-500 hover:text-purple-600 transition-colors'
@@ -231,7 +271,7 @@ const Navbar = ({ activeTab, setActiveTab, user, onLogout }: { activeTab: string
                     onLogout();
                     navigate('/login');
                   }}
-                  className="text-sm font-medium text-red-500 hover:text-red-600 transition-colors"
+                  className="text-sm font-medium text-red-500 hover:text-red-600 active:scale-95 transition-transform"
                 >
                   Logout
                 </button>
@@ -256,7 +296,7 @@ const Navbar = ({ activeTab, setActiveTab, user, onLogout }: { activeTab: string
       </div>
 
       {user && mobileMenuOpen && (
-        <div className="md:hidden border-t border-gray-100 bg-white shadow-inner">
+        <div className="md:hidden border-t border-gray-100 bg-white shadow-inner animate-[fadeIn_.18s_ease-out]">
           <div className="space-y-1 px-4 py-3">
             {userLinks.map((link) => (
               <button
@@ -292,6 +332,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const [surveyData, setSurveyData] = useState<SurveyData[]>([]);
+  const [latestAssessment, setLatestAssessment] = useState<AssessmentDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [socket, setSocket] = useState<any>(null);
@@ -339,24 +380,21 @@ function App() {
       }
       setAnalysisData(null);
       setSurveyData([]);
+      setLatestAssessment(null);
       return;
     }
 
     fetchAnalysisData();
     fetchSurveyData();
+    fetchLatestAssessment();
 
     const socketConnection = io(API_BASE_URL);
     setSocket(socketConnection);
 
-    socketConnection.on('survey_submitted', (data: any) => {
-      setAnalysisData((prevData) => {
-        if (!prevData) return prevData;
-        return {
-          ...prevData,
-          totalSurveys: data.totalSurveys,
-        };
-      });
+    socketConnection.on('survey_submitted', () => {
+      fetchAnalysisData();
       fetchSurveyData();
+      fetchLatestAssessment();
     });
 
     return () => {
@@ -371,7 +409,7 @@ function App() {
       setLoading(true);
       setError(null);
       const data = await apiRequest<AnalysisData>(
-        `/api/analysis/complete`,
+        `/api/analysis/complete?include_details=true`,
         {
           authToken: user.token,
         }
@@ -400,6 +438,45 @@ function App() {
     }
   };
 
+  const fetchLatestAssessment = async () => {
+    if (!user) return;
+    try {
+      const assessments = await apiRequest<Array<{ id: number }>>(
+        '/api/assessments',
+        {
+          authToken: user.token,
+        }
+      );
+
+      if (!Array.isArray(assessments) || assessments.length === 0) {
+        setLatestAssessment(null);
+        return;
+      }
+
+      const detail = await apiRequest<AssessmentDetail>(
+        `/api/assessments/${assessments[0].id}`,
+        {
+          authToken: user.token,
+        }
+      );
+      setLatestAssessment(detail);
+    } catch (err) {
+      console.error('Error fetching latest assessment:', err);
+      setLatestAssessment(null);
+    }
+  };
+
+  const latestAssessmentSurveyData = useMemo(() => {
+    if (!latestAssessment) {
+      return null;
+    }
+
+    return {
+      ...latestAssessment.survey_data,
+      analysis: latestAssessment.scores,
+    };
+  }, [latestAssessment]);
+
   const handleSurveySubmitSuccess = () => {
     fetchAnalysisData();
     fetchSurveyData();
@@ -425,6 +502,7 @@ function App() {
     setActiveTab('home');
     setAnalysisData(null);
     setSurveyData([]);
+    setLatestAssessment(null);
     setError(null);
     setLoading(false);
   };
@@ -477,9 +555,9 @@ function App() {
                       </div>
                     )}
                     <AnalyticsDashboard data={analysisData} />
-                    {surveyData.length > 0 ? (
+                    {latestAssessmentSurveyData ? (
                       <PsychiatricInsights
-                        surveyData={surveyData[surveyData.length - 1]}
+                        surveyData={latestAssessmentSurveyData}
                       />
                     ) : (
                       <div className="rounded-md border border-purple-100 bg-white p-6 text-sm text-gray-500">
@@ -495,7 +573,7 @@ function App() {
               path="/data-driven"
               element={
                 <ProtectedRoute user={user}>
-                  <DataDrivenPaths />
+                  <DataDrivenPaths analysisData={analysisData} loading={loading} error={error} />
                 </ProtectedRoute>
               }
             />
@@ -503,7 +581,15 @@ function App() {
               path="/mentors"
               element={
                 <ProtectedRoute user={user}>
-                  <MentorConnections />
+                  <MentorConnections analysisData={analysisData} surveyData={surveyData} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/monitoring"
+              element={
+                <ProtectedRoute user={user} allowedRoles={['school_admin']}>
+                  <DataQualityMonitoring />
                 </ProtectedRoute>
               }
             />
@@ -563,6 +649,41 @@ function App() {
 // New HomePage component
 const HomePage = ({ setActiveTab, user }: { setActiveTab: (tab: string) => void; user: AuthUser | null }) => {
   const navigate = useNavigate();
+  const [homeVisible, setHomeVisible] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setHomeVisible(true), 20);
+    return () => window.clearTimeout(timer);
+  }, []);
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }, []);
+
+  const quickActions = [
+    {
+      key: 'dashboard',
+      label: 'Dashboard',
+      icon: <BarChart3 className="h-5 w-5" />,
+      className:
+        'bg-purple-100 hover:bg-purple-200 text-purple-700',
+      onClick: () => handleNavigation('/dashboard', 'dashboard'),
+    },
+    ...(user?.role === 'school_admin'
+      ? [
+          {
+            key: 'survey',
+            label: 'Take Survey',
+            icon: <BookOpen className="h-5 w-5" />,
+            className:
+              'bg-blue-100 hover:bg-blue-200 text-blue-700',
+            onClick: () => handleNavigation('/student-assessment', 'student-assessment'),
+          },
+        ]
+      : []),
+  ];
 
   const handleNavigation = (path: string, tab: string) => {
     navigate(path);
@@ -579,6 +700,9 @@ const HomePage = ({ setActiveTab, user }: { setActiveTab: (tab: string) => void;
               Visionary Career Assistance
             </h1>
           </div>
+          <p className="text-sm sm:text-base text-gray-600 mb-2 leading-relaxed">
+            {greeting}{user?.email ? `, ${user.email.split('@')[0]}` : ''}.
+          </p>
           <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6 leading-relaxed">
             Empowering students through personalized, data-driven career guidance
           </p>
@@ -588,8 +712,12 @@ const HomePage = ({ setActiveTab, user }: { setActiveTab: (tab: string) => void;
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            <div 
-              className="bg-gray-50 rounded-xl p-5 sm:p-6 cursor-pointer hover:shadow-md transition-shadow"
+            <button
+              type="button"
+              className={`bg-gray-50 rounded-xl p-5 sm:p-6 text-left hover:shadow-md hover:-translate-y-0.5 active:scale-[0.99] transition-all duration-300 ${
+                homeVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
+              }`}
+              style={{ transitionDelay: '40ms' }}
               onClick={() => handleNavigation('/dashboard', 'dashboard')}
             >
               <div className="flex items-center mb-4">
@@ -601,10 +729,14 @@ const HomePage = ({ setActiveTab, user }: { setActiveTab: (tab: string) => void;
               <p className="text-gray-500 text-xs sm:text-sm leading-relaxed">
                 Detect hidden potential through advanced sentiment analysis
               </p>
-            </div>
+            </button>
 
-            <div 
-              className="bg-gray-50 rounded-xl p-5 sm:p-6 cursor-pointer hover:shadow-md transition-shadow"
+            <button
+              type="button"
+              className={`bg-gray-50 rounded-xl p-5 sm:p-6 text-left hover:shadow-md hover:-translate-y-0.5 active:scale-[0.99] transition-all duration-300 ${
+                homeVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
+              }`}
+              style={{ transitionDelay: '90ms' }}
               onClick={() => handleNavigation('/data-driven', 'data-driven')}
             >
               <div className="flex items-center mb-4">
@@ -616,10 +748,14 @@ const HomePage = ({ setActiveTab, user }: { setActiveTab: (tab: string) => void;
               <p className="text-gray-500 text-xs sm:text-sm leading-relaxed">
                 Personalized career recommendations based on your unique profile
               </p>
-            </div>
+            </button>
 
-            <div 
-              className="bg-gray-50 rounded-xl p-5 sm:p-6 cursor-pointer hover:shadow-md transition-shadow"
+            <button
+              type="button"
+              className={`bg-gray-50 rounded-xl p-5 sm:p-6 text-left hover:shadow-md hover:-translate-y-0.5 active:scale-[0.99] transition-all duration-300 ${
+                homeVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
+              }`}
+              style={{ transitionDelay: '140ms' }}
               onClick={() => handleNavigation('/mentors', 'mentors')}
             >
               <div className="flex items-center mb-4">
@@ -631,28 +767,25 @@ const HomePage = ({ setActiveTab, user }: { setActiveTab: (tab: string) => void;
               <p className="text-gray-500 text-xs sm:text-sm leading-relaxed">
                 Connect with professionals who understand your journey
               </p>
-            </div>
+            </button>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-        <button
-          onClick={() => handleNavigation('/dashboard', 'dashboard')}
-          className="flex items-center justify-center space-x-2 bg-purple-100 hover:bg-purple-200 text-purple-700 px-4 py-3 sm:p-4 rounded-xl transition-colors text-sm sm:text-base"
-        >
-          <BarChart3 className="h-5 w-5" />
-          <span>Dashboard</span>
-        </button>
-        {user?.role === 'school_admin' && (
+      <div className={`grid grid-cols-1 ${quickActions.length > 1 ? 'sm:grid-cols-2' : 'sm:grid-cols-1'} gap-3 sm:gap-4`}>
+        {quickActions.map((action, index) => (
           <button
-            onClick={() => handleNavigation('/student-assessment', 'student-assessment')}
-            className="flex items-center justify-center space-x-2 bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-3 sm:p-4 rounded-xl transition-colors text-sm sm:text-base"
+            key={action.key}
+            onClick={action.onClick}
+            className={`flex items-center justify-center space-x-2 px-4 py-3 sm:p-4 rounded-xl transition-all duration-300 active:scale-[0.99] ${
+              homeVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
+            } text-sm sm:text-base ${action.className}`}
+            style={{ transitionDelay: `${170 + index * 55}ms` }}
           >
-            <BookOpen className="h-5 w-5" />
-            <span>Take Survey</span>
+            {action.icon}
+            <span>{action.label}</span>
           </button>
-        )}
+        ))}
       </div>
     </>
   );

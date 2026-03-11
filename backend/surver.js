@@ -10,12 +10,12 @@ app.use(cors());
 app.use(express.json());
 
 // Direct path to existing Excel file
-const FILE_PATH = path.join(__dirname, 'childsurvey.xlsx');
+const FILE_PATH = path.join(__dirname, 'Childsurvey.xlsx');
 
 // Helper function to ensure file exists
 const checkFile = () => {
   if (!fs.existsSync(FILE_PATH)) {
-    throw new Error('childsurvey.xlsx not found in backend directory');
+    throw new Error('Childsurvey.xlsx not found in backend directory');
   }
 };
 

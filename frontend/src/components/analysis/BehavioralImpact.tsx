@@ -1,5 +1,12 @@
 import React from 'react';
 import { PieChart } from 'lucide-react';
+import {
+  formatCorrelation,
+  formatCount,
+  formatInsightScore,
+  formatPercent,
+  INSIGHT_TITLES,
+} from '../../utils/insightPresentation';
 
 interface BehavioralImpactProps {
   data?: {
@@ -10,6 +17,9 @@ interface BehavioralImpactProps {
     highly_negative_count: number;
     average_score: number;
     total_responses: number;
+    academic_correlation?: number;
+    matched_pairs_count?: number;
+    correlation_reason?: 'insufficient_pairs' | 'no_sentiment_variance' | 'no_academic_variance' | 'computed';
   };
 }
 
@@ -22,7 +32,35 @@ const BehavioralImpact: React.FC<BehavioralImpactProps> = ({ data }) => {
     );
   }
 
-  const calculatePercentage = (value: number) => ((value / data.total_responses) * 100).toFixed(1);
+  const totalResponses = data.total_responses || 0;
+  const calculatePercentage = (value: number) =>
+    totalResponses > 0 ? ((value / totalResponses) * 100).toFixed(1) : '0.0';
+
+  const getCorrelationTone = (value?: number) => {
+    if (typeof value !== 'number') return 'text-gray-500';
+    const abs = Math.abs(value);
+    if (abs >= 0.7) return 'text-green-700';
+    if (abs >= 0.4) return 'text-blue-700';
+    if (abs >= 0.2) return 'text-amber-700';
+    return 'text-gray-700';
+  };
+
+  const getCorrelationReasonLabel = (
+    reason?: 'insufficient_pairs' | 'no_sentiment_variance' | 'no_academic_variance' | 'computed'
+  ) => {
+    switch (reason) {
+      case 'computed':
+        return 'Computed from matched sentiment-academic pairs.';
+      case 'insufficient_pairs':
+        return 'Not enough matched sentiment-academic pairs.';
+      case 'no_sentiment_variance':
+        return 'Sentiment scores do not vary across matched pairs.';
+      case 'no_academic_variance':
+        return 'Academic scores do not vary across matched pairs.';
+      default:
+        return 'Correlation reason unavailable.';
+    }
+  };
 
   const behavioralData = [
     { label: 'Highly Positive', value: data.highly_positive_count, color: 'bg-green-500', percentage: calculatePercentage(data.highly_positive_count) },
@@ -32,14 +70,20 @@ const BehavioralImpact: React.FC<BehavioralImpactProps> = ({ data }) => {
     { label: 'Highly Negative', value: data.highly_negative_count, color: 'bg-red-500', percentage: calculatePercentage(data.highly_negative_count) },
   ];
 
-  const positivePercentage = ((data.highly_positive_count + data.positive_count) / data.total_responses * 100).toFixed(1);
-  const negativePercentage = ((data.highly_negative_count + data.negative_count) / data.total_responses * 100).toFixed(1);
+  const positivePercentage =
+    totalResponses > 0
+      ? (((data.highly_positive_count + data.positive_count) / totalResponses) * 100).toFixed(1)
+      : '0.0';
+  const negativePercentage =
+    totalResponses > 0
+      ? (((data.highly_negative_count + data.negative_count) / totalResponses) * 100).toFixed(1)
+      : '0.0';
 
   return (
     <div className="bg-white rounded-2xl shadow-sm p-5 sm:p-6 space-y-5">
       <div className="flex items-center">
         <PieChart className="h-6 w-6 text-green-600 mr-2" />
-        <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Behavioral Impact</h2>
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-900">{INSIGHT_TITLES.behavioral}</h2>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
@@ -72,13 +116,29 @@ const BehavioralImpact: React.FC<BehavioralImpactProps> = ({ data }) => {
               <div>
                 <p className="text-xs sm:text-sm text-gray-600">Average Score</p>
                 <p className="text-xl sm:text-2xl font-semibold text-green-600">
-                  {data.average_score.toFixed(2)}
+                  {formatInsightScore(data.average_score)}
                 </p>
               </div>
               <div>
                 <p className="text-xs sm:text-sm text-gray-600">Total Responses</p>
                 <p className="text-xl sm:text-2xl font-semibold text-green-600">
-                  {data.total_responses}
+                  {formatCount(totalResponses)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs sm:text-sm text-gray-600">Academic Correlation</p>
+                <p className={`text-lg sm:text-xl font-semibold ${getCorrelationTone(data.academic_correlation)}`}>
+                  {formatCorrelation(data.academic_correlation)}
+                </p>
+                <p className="text-xs text-gray-500">Scale: -1 to +1</p>
+                <p className="text-xs text-gray-500">
+                  {getCorrelationReasonLabel(data.correlation_reason)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs sm:text-sm text-gray-600">Matched Pairs</p>
+                <p className="text-lg sm:text-xl font-semibold text-indigo-600">
+                  {formatCount(data.matched_pairs_count || 0)}
                 </p>
               </div>
             </div>
@@ -89,11 +149,11 @@ const BehavioralImpact: React.FC<BehavioralImpactProps> = ({ data }) => {
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <p className="text-xs sm:text-sm text-gray-600">Positive Impact</p>
-                <p className="text-xl sm:text-2xl font-semibold text-green-600">{positivePercentage}%</p>
+                <p className="text-xl sm:text-2xl font-semibold text-green-600">{formatPercent(positivePercentage)}</p>
               </div>
               <div>
                 <p className="text-xs sm:text-sm text-gray-600">Negative Impact</p>
-                <p className="text-xl sm:text-2xl font-semibold text-red-600">{negativePercentage}%</p>
+                <p className="text-xl sm:text-2xl font-semibold text-red-600">{formatPercent(negativePercentage)}</p>
               </div>
             </div>
           </div>

@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import RoleModelAnalysis from './analysis/RoleModelAnalysis';
 import BackgroundAnalysis from './analysis/BackgroundAnalysis';
 import BehavioralImpact from './analysis/BehavioralImpact';
 import IncomeDistribution from './analysis/IncomeDistribution';
-import { io, Socket } from 'socket.io-client';
+import HomeProblemsAnalysis from './analysis/HomeProblemsAnalysis';
+import { INSIGHT_TITLES } from '../utils/insightPresentation';
 
 interface AnalysisData {
   rolemodel?: {
@@ -12,6 +13,8 @@ interface AnalysisData {
     negativeImpact: number;
     influentialCount: number;
     totalTraits: number;
+    sentimentScore?: number;
+    academicCorrelation?: number;
     topTraits: {
       [key: string]: number;
     };
@@ -26,10 +29,14 @@ interface AnalysisData {
     neutral: number;
     negative: number;
     highly_negative: number;
+    academic_correlation?: number;
+    training_samples?: number;
+    model_updated?: boolean;
     background_details?: {
       background: string;
       score: number;
       category: string;
+      academic_performance_score?: number | null;
     }[];
   };
   behavioral?: {
@@ -40,6 +47,9 @@ interface AnalysisData {
     highly_negative_count: number;
     average_score: number;
     total_responses: number;
+    academic_correlation?: number;
+    matched_pairs_count?: number;
+    correlation_reason?: 'insufficient_pairs' | 'no_sentiment_variance' | 'no_academic_variance' | 'computed';
   };
   income?: {
     below_poverty_line: number;
@@ -55,120 +65,120 @@ interface AnalysisData {
       below_average: number;
       average: number;
     };
+    academic_correlation?: number;
+    income_academic_correlation?: number;
+    training_samples?: number;
+    model_updated?: boolean;
+    income_academic_profile?: Array<{
+      category: string;
+      households: number;
+      avg_income: number | null;
+      avg_academic_score: number | null;
+      rl_expected_academic_score: number;
+    }>;
+    rl_expected_academic_by_category?: Record<string, number>;
   };
+  home_problems?: {
+    highly_positive_count?: number;
+    positive_count?: number;
+    neutral_count?: number;
+    negative_count?: number;
+    highly_negative_count?: number;
+    average_score?: number;
+    total_responses?: number;
+    matched_pairs_count?: number;
+    academic_correlation?: number;
+    theme_distribution?: Array<{
+      theme: string;
+      count: number;
+    }>;
+  };
+  analysis_errors?: Record<string, string>;
 }
 
-const DataDrivenPaths: React.FC = () => {
-  const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [backendBase, setBackendBase] = useState<string | null>(null);
+type DataDrivenPathsProps = {
+  analysisData: AnalysisData | null;
+  loading?: boolean;
+  error?: string | null;
+};
 
-  const fetchData = useCallback(async (preferredBase?: string) => {
-    const timeoutFetch = (input: RequestInfo | URL, init?: RequestInit, timeoutMs = 6000) => {
-      const controller = new AbortController();
-      const id = setTimeout(() => controller.abort(), timeoutMs);
-      return fetch(input, { ...init, signal: controller.signal }).finally(() => clearTimeout(id));
-    };
+const hasNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
 
-    try {
-      try {
-        console.log('Fetching analysis data...');
+const hasRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
 
-        const envBase = (import.meta as any).env?.VITE_API_URL as string | undefined;
-        const likelyBases = [
-          preferredBase,
-          envBase,
-          `${window.location.origin}`,
-          'http://localhost:5000',
-          'http://127.0.0.1:5000',
-          `${window.location.protocol}//${window.location.hostname}:5000`,
-        ].filter(Boolean) as string[];
+const AnalysisSectionFallback: React.FC<{ title: string; message?: string }> = ({
+  title,
+  message,
+}) => (
+  <div className="bg-white rounded-2xl shadow-sm p-5 sm:p-6 space-y-2">
+    <h2 className="text-lg sm:text-xl font-semibold text-gray-900">{title}</h2>
+    <p className="text-sm text-gray-600">
+      {message || 'This analysis is temporarily unavailable.'}
+    </p>
+  </div>
+);
 
-        // Try to discover a healthy backend first
-        const findHealthyBase = async (): Promise<string | null> => {
-          for (const base of likelyBases) {
-            try {
-              const res = await timeoutFetch(`${base}/api/health`, { method: 'GET' }, 3000);
-              if (!res.ok) continue;
-              const json = await res.json();
-              if (json?.status === 'healthy') return base;
-            } catch (_) {
-              // ignore and continue
-            }
-          }
-          return null;
-        };
+const DataDrivenPaths: React.FC<DataDrivenPathsProps> = ({ analysisData, loading = false, error = null }) => {
+  const roleModel = analysisData?.rolemodel;
+  const background = analysisData?.background;
+  const behavioral = analysisData?.behavioral;
+  const income = analysisData?.income;
+  const homeProblems = analysisData?.home_problems;
+  const analysisErrors = analysisData?.analysis_errors || {};
 
-        const healthyBase = await findHealthyBase();
-        const basesToTry = healthyBase ? [healthyBase] : likelyBases;
+  const hasRoleModelData =
+    !!roleModel &&
+    hasNumber(roleModel.positiveImpact) &&
+    hasNumber(roleModel.neutralImpact) &&
+    hasNumber(roleModel.negativeImpact) &&
+    hasNumber(roleModel.influentialCount) &&
+    hasNumber(roleModel.totalTraits) &&
+    hasRecord(roleModel.topTraits);
 
-        const endpoints = [
-          (base: string) => `${base}/api/analysis/complete?include_details=true`,
-          (base: string) => `${base}/api/analysis/complete-summary`,
-        ];
+  const hasBackgroundData =
+    !!background &&
+    hasNumber(background.positive_count) &&
+    hasNumber(background.negative_count) &&
+    hasNumber(background.neutral_count) &&
+    hasNumber(background.average_score) &&
+    hasNumber(background.highly_positive) &&
+    hasNumber(background.positive) &&
+    hasNumber(background.neutral) &&
+    hasNumber(background.negative) &&
+    hasNumber(background.highly_negative);
 
-        let lastError: unknown = null;
-        for (const base of basesToTry) {
-          for (const buildUrl of endpoints) {
-            const url = buildUrl(base);
-            try {
-              const response = await timeoutFetch(url, { method: 'GET' });
-              if (!response.ok) {
-                lastError = new Error(`HTTP ${response.status}`);
-                continue;
-              }
-              const data = await response.json();
-              console.log('Received data from', url, data);
-              setAnalysisData(data);
-              setError(null);
-              setBackendBase(base);
-              return; // success
-            } catch (err) {
-              lastError = err;
-              console.warn('Fetch attempt failed for', url, err);
-            }
-          }
-        }
+  const hasBehavioralData =
+    !!behavioral &&
+    hasNumber(behavioral.highly_positive_count) &&
+    hasNumber(behavioral.positive_count) &&
+    hasNumber(behavioral.neutral_count) &&
+    hasNumber(behavioral.negative_count) &&
+    hasNumber(behavioral.highly_negative_count) &&
+    hasNumber(behavioral.average_score) &&
+    hasNumber(behavioral.total_responses);
 
-        throw lastError ?? new Error('All endpoints failed');
-      } catch (error) {
-        console.error('Error fetching analysis:', error);
-        setAnalysisData(null);
-        setError('Failed to load analysis data. Backend not reachable or no data loaded.');
-      } finally {
-        setLoading(false);
-      }
-    } catch (outerError) {
-      console.error('Unexpected error fetching data:', outerError);
-      setError('Failed to load analysis data.');
-      setLoading(false);
-    }
-  }, []);
+  const hasIncomeData =
+    !!income &&
+    hasNumber(income.below_poverty_line) &&
+    hasNumber(income.low_income) &&
+    hasNumber(income.below_average) &&
+    hasNumber(income.average) &&
+    hasNumber(income.above_average) &&
+    hasNumber(income.averageIncome) &&
+    hasNumber(income.total_households) &&
+    hasRecord(income.current_thresholds);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const hasDetailedHomeProblems =
+    homeProblems &&
+    hasNumber(homeProblems.highly_positive_count) &&
+    hasNumber(homeProblems.positive_count) &&
+    hasNumber(homeProblems.neutral_count) &&
+    hasNumber(homeProblems.negative_count) &&
+    hasNumber(homeProblems.highly_negative_count) &&
+    hasNumber(homeProblems.average_score) &&
+    hasNumber(homeProblems.total_responses);
 
-  useEffect(() => {
-    if (!backendBase) return;
-
-    const socket: Socket = io(backendBase, {
-      transports: ['websocket', 'polling'],
-    });
-
-    const handleSurveyUpdate = () => {
-      console.info('Real-time update received, refreshing analysis data');
-      fetchData(backendBase);
-    };
-
-    socket.on('survey_submitted', handleSurveyUpdate);
-
-    return () => {
-      socket.off('survey_submitted', handleSurveyUpdate);
-      socket.disconnect();
-    };
-  }, [backendBase, fetchData]);
 
   if (loading) {
     return (
@@ -197,11 +207,53 @@ const DataDrivenPaths: React.FC = () => {
         </p>
       </div>
 
+      {Object.keys(analysisErrors).length > 0 && (
+        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          Some analytics sections could not be generated right now. Available sections are shown below.
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-6 sm:gap-8">
-        <RoleModelAnalysis data={analysisData?.rolemodel} />
-        <BackgroundAnalysis data={analysisData?.background} />
-        <BehavioralImpact data={analysisData?.behavioral} />
-        <IncomeDistribution data={analysisData?.income} />
+        {hasRoleModelData ? (
+          <RoleModelAnalysis data={roleModel} />
+        ) : (
+          <AnalysisSectionFallback
+            title={INSIGHT_TITLES.roleModel}
+            message={analysisErrors.rolemodel}
+          />
+        )}
+        {hasBackgroundData ? (
+          <BackgroundAnalysis data={background} />
+        ) : (
+          <AnalysisSectionFallback
+            title={INSIGHT_TITLES.background}
+            message={analysisErrors.background}
+          />
+        )}
+        {hasBehavioralData ? (
+          <BehavioralImpact data={behavioral} />
+        ) : (
+          <AnalysisSectionFallback
+            title={INSIGHT_TITLES.behavioral}
+            message={analysisErrors.behavioral}
+          />
+        )}
+        {hasIncomeData ? (
+          <IncomeDistribution data={income} />
+        ) : (
+          <AnalysisSectionFallback
+            title={INSIGHT_TITLES.income}
+            message={analysisErrors.income}
+          />
+        )}
+        {hasDetailedHomeProblems ? (
+          <HomeProblemsAnalysis data={homeProblems as any} />
+        ) : (
+          <AnalysisSectionFallback
+            title={INSIGHT_TITLES.homeProblems}
+            message={analysisErrors.home_problems}
+          />
+        )}
       </div>
     </div>
   );

@@ -83,6 +83,45 @@ visionary-career-assistance/
 - `GET /api/analysis/rolemodel`: Get role model analysis
 - `GET /api/analysis/income`: Get family income analysis
 - `GET /api/analysis/complete`: Get all analyses at once
+- `GET /metrics`: Prometheus-style operational metrics
+- `GET /api/data-quality/monitoring?page=1&pageSize=25`: Paginated ingestion quality metrics
+
+## Performance and Reliability Controls
+
+The API now includes Redis-backed caching, capped pagination, and rate limiting for analytics and data-quality endpoints.
+
+### Key environment variables
+
+- `ANALYTICS_CACHE_ENABLED` (default `true`)
+- `ANALYTICS_CACHE_TTL_SECONDS` (default `120`)
+- `ANALYTICS_MAX_PAGE_SIZE` (default `100`)
+- `ANALYTICS_DEFAULT_PAGE_SIZE` (default `25`)
+- `ANALYTICS_RATE_LIMIT_REQUESTS` (default `120`)
+- `ANALYTICS_RATE_LIMIT_WINDOW_SECONDS` (default `60`)
+- `MONITORING_SLOW_REQUEST_MS` (default `1500`)
+
+### Headers
+
+- Cache state: `X-Cache` (`HIT` / `MISS`)
+- Request tracing: `X-Request-Id`, `X-Response-Time-Ms`
+- Rate limiting: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`
+- Retry guidance on throttling: `Retry-After` (on `429`)
+
+## CI Coverage and Smoke Gates
+
+- Coverage workflow: `.github/workflows/backend-coverage.yml`
+  - Runs ingestion and analytics tests.
+  - Publishes `backend/coverage.xml` artifact for quality tracking.
+- Staging smoke workflow: `.github/workflows/staging-smoke-tests.yml`
+  - Executes `backend/scripts/smoke_ingest_read.py`.
+  - Supports `workflow_call` so deployment pipelines can gate promotion on smoke pass/fail.
+
+## Load Testing
+
+Locust scenarios for tuning are in `backend/loadtests/locustfile.py`.
+
+- Install: `pip install locust`
+- Run: `locust -f backend/loadtests/locustfile.py --host http://localhost:5000`
 
 ## Technologies Used
 

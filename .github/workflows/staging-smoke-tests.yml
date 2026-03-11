@@ -1,0 +1,40 @@
+name: Staging Smoke Tests
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      staging_base_url:
+        required: true
+        type: string
+    secrets:
+      staging_auth_token:
+        required: true
+  deployment_status:
+
+jobs:
+  smoke-ingest-read:
+    if: >
+      github.event_name == 'workflow_call' ||
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'deployment_status' &&
+        github.event.deployment_status.state == 'success' &&
+        github.event.deployment.environment == 'staging'
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run smoke test (ingest -> read path)
+        env:
+          STAGING_BASE_URL: ${{ inputs.staging_base_url || vars.STAGING_BASE_URL }}
+          STAGING_AUTH_TOKEN: ${{ secrets.staging_auth_token || secrets.STAGING_AUTH_TOKEN }}
+        run: |
+          python backend/scripts/smoke_ingest_read.py

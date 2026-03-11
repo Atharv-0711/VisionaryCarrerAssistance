@@ -1,20 +1,3 @@
-# Remove Kafka and AWS Components
-
-## Files to Delete
-- [x] backend/kafka_client.py
-- [x] backend/kafka_producer.py
-- [x] backend/kafka_consumer.py
-- [x] backend/aws_config.py
-- [x] backend/s3_storage.py
-- [x] backend/dynamodb_storage.py
-- [x] backend/monitoring.py
-- [x] terraform/main.tf
-
-## Files to Update
-- [x] backend/config.py: Remove Kafka and AWS settings
-- [x] backend/app.py: Remove Kafka imports and logic
-- [x] backend/requirements.txt: Remove any Kafka/AWS dependencies
-
-## Verification
-- [x] Search for 'kafka' to ensure no references remain
-- [x] Search for 'aws' to ensure no references remain
+Configure your environment (SMTP details, FRONTEND_BASE_URL, optional DATABASE_PATH) so email verification links work end-to-end.
+Run backend (flask/Socket.IO server) and frontend npm run dev, then test both roles: signup → email verify → login → role-specific routes.
+Deploy the updated backend and frontend when you’re ready.

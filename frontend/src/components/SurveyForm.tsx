@@ -4,18 +4,19 @@ import { apiRequest } from '../utils/api';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 interface FormData {
-  "Name of Child ": string;
+  "Timestamp": string;
+  "Name of Child": string;
   "Age": string;
+  "Date of Birth": string;
   "Class (बच्चे की कक्षा)": string;
-  "Background of the Child ": string;
-  "Problems in Home ": string;
+  "Background of the Child": string;
+  "Problems in Home": string;
   "Behavioral Impact": string;
-  "Academic Performance ": string;
-  "Family Income ": string;
-  "Role models": string;
-  "Reason for role model ": string;
-  "Counselling Needed "?: string;
-  [key: string]: string | undefined;
+  "Academic Performance": string;
+  "Family Income": string;
+  "Role Models": string;
+  "Reason for Such Role Model": string;
+  [key: string]: string;
 }
 
 interface FormErrors {
@@ -48,6 +49,18 @@ const validateFamilyIncome = (income: number): boolean => {
   return income > 0;
 };
 
+const formatDateTimeLocalValue = (isoValue: string): string => {
+  if (!isoValue) return '';
+
+  const date = new Date(isoValue);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+};
+
 interface SubmitSurveyResponse {
   success: boolean;
   message: string;
@@ -58,13 +71,26 @@ interface SubmitSurveyResponse {
 const SurveyForm: React.FC<SurveyFormProps> = ({ onSubmitSuccess }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { studentId: initialStudentId, studentName: initialStudentName, studentAge: initialStudentAge, studentClass: initialStudentClass } =
-    (location.state as { studentId?: number; studentName?: string; studentAge?: number; studentClass?: string } | null) ||
+  const {
+    studentId: initialStudentId,
+    studentName: initialStudentName,
+    studentAge: initialStudentAge,
+    studentDob: initialStudentDob,
+    studentClass: initialStudentClass,
+  } =
+    (location.state as {
+      studentId?: number;
+      studentName?: string;
+      studentAge?: number;
+      studentDob?: string;
+      studentClass?: string;
+    } | null) ||
     {};
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const studentIdQuery = searchParams.get('studentId');
   const studentNameQuery = searchParams.get('studentName');
   const studentAgeQuery = searchParams.get('studentAge');
+  const studentDobQuery = searchParams.get('studentDob');
   const studentClassQuery = searchParams.get('studentClass');
   const resolvedStudentId = useMemo(() => {
     if (typeof initialStudentId === 'number') {
@@ -95,31 +121,58 @@ const SurveyForm: React.FC<SurveyFormProps> = ({ onSubmitSuccess }) => {
     }
     return undefined;
   }, [initialStudentClass, studentClassQuery]);
+  const resolvedStudentDob = useMemo(() => {
+    if (typeof initialStudentDob === 'string' && initialStudentDob.trim() !== '') {
+      return initialStudentDob;
+    }
+    if (studentDobQuery) {
+      return studentDobQuery;
+    }
+    return undefined;
+  }, [initialStudentDob, studentDobQuery]);
+  const isStudentNameFixed = Boolean(resolvedStudentId && resolvedStudentName);
+  const isStudentDobFixed = Boolean(resolvedStudentId && resolvedStudentDob);
 
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<FormData>({
-    "Name of Child ": "",
+    "Timestamp": new Date().toISOString(),
+    "Name of Child": "",
     "Age": "",
+    "Date of Birth": "",
     "Class (बच्चे की कक्षा)": "",
-    "Background of the Child ": "",
-    "Problems in Home ": "",
+    "Background of the Child": "",
+    "Problems in Home": "",
     "Behavioral Impact": "",
-    "Academic Performance ": "",
-    "Family Income ": "",
-    "Role models": "",
-    "Reason for role model ": "",
-    "Counselling Needed ": "",
+    "Academic Performance": "",
+    "Family Income": "",
+    "Role Models": "",
+    "Reason for Such Role Model": "",
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
   useEffect(() => {
     setFormData((prev) => ({
       ...prev,
-      "Name of Child ": resolvedStudentName ?? prev["Name of Child "],
+      "Name of Child": resolvedStudentName ?? prev["Name of Child"],
       "Age": resolvedStudentAge ?? prev["Age"],
+      "Date of Birth": resolvedStudentDob ?? prev["Date of Birth"],
       "Class (बच्चे की कक्षा)": resolvedStudentClass ?? prev["Class (बच्चे की कक्षा)"],
     }));
-  }, [resolvedStudentName, resolvedStudentAge, resolvedStudentClass]);
+  }, [resolvedStudentName, resolvedStudentAge, resolvedStudentDob, resolvedStudentClass]);
+
+  useEffect(() => {
+    const updateTimestamp = () => {
+      setFormData((prev) => ({
+        ...prev,
+        Timestamp: new Date().toISOString(),
+      }));
+    };
+
+    updateTimestamp();
+    const timer = window.setInterval(updateTimestamp, 1000);
+
+    return () => window.clearInterval(timer);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,10 +180,10 @@ const SurveyForm: React.FC<SurveyFormProps> = ({ onSubmitSuccess }) => {
     // Validation checks
     const newErrors: FormErrors = {};
     
-    if (!formData["Name of Child "].trim()) {
-      newErrors["Name of Child "] = "Name is required";
-    } else if (!validateName(formData["Name of Child "])) {
-      newErrors["Name of Child "] = "Please enter a valid name (letters and spaces only)";
+    if (!formData["Name of Child"].trim()) {
+      newErrors["Name of Child"] = "Name is required";
+    } else if (!validateName(formData["Name of Child"])) {
+      newErrors["Name of Child"] = "Please enter a valid name (letters and spaces only)";
     }
     
     const age = Number(formData["Age"]);
@@ -143,28 +196,30 @@ const SurveyForm: React.FC<SurveyFormProps> = ({ onSubmitSuccess }) => {
       newErrors["Class (बच्चे की कक्षा)"] = "Class must be between 1 and 12";
     }
     
-    const performance = Number(formData["Academic Performance "]);
+    const performance = Number(formData["Academic Performance"]);
     if (isNaN(performance) || !validateAcademicPerformance(performance)) {
-      newErrors["Academic Performance "] = "Academic Performance must be between 0 and 100";
+      newErrors["Academic Performance"] = "Academic Performance must be between 0 and 100";
     }
     
-    const income = Number(formData["Family Income "]);
+    const income = Number(formData["Family Income"]);
     if (isNaN(income) || !validateFamilyIncome(income)) {
-      newErrors["Family Income "] = "Family Income must be greater than 0";
+      newErrors["Family Income"] = "Family Income must be greater than 0";
     }
     
     // Check for required fields
     const requiredFields = [
-      "Name of Child ",
+      "Timestamp",
+      "Name of Child",
       "Age",
+      "Date of Birth",
       "Class (बच्चे की कक्षा)",
-      "Background of the Child ",
-      "Problems in Home ",
+      "Background of the Child",
+      "Problems in Home",
       "Behavioral Impact",
-      "Academic Performance ",
-      "Family Income ",
-      "Role models",
-      "Counselling Needed ",
+      "Academic Performance",
+      "Family Income",
+      "Role Models",
+      "Reason for Such Role Model",
     ];
     
     requiredFields.forEach(field => {
@@ -188,8 +243,8 @@ const SurveyForm: React.FC<SurveyFormProps> = ({ onSubmitSuccess }) => {
         ...formData,
         "Age": parseFloat(formData["Age"]),
         "Class (बच्चे की कक्षा)": parseFloat(formData["Class (बच्चे की कक्षा)"]),
-        "Academic Performance ": parseFloat(formData["Academic Performance "]),
-        "Family Income ": parseFloat(formData["Family Income "])
+        "Academic Performance": parseFloat(formData["Academic Performance"]),
+        "Family Income": parseFloat(formData["Family Income"])
       };
 
       // Submit to backend
@@ -216,17 +271,18 @@ const SurveyForm: React.FC<SurveyFormProps> = ({ onSubmitSuccess }) => {
         
         // Clear form
         setFormData({
-          "Name of Child ": "",
+          "Timestamp": new Date().toISOString(),
+          "Name of Child": "",
           "Age": "",
+          "Date of Birth": "",
           "Class (बच्चे की कक्षा)": "",
-          "Background of the Child ": "",
-          "Problems in Home ": "",
+          "Background of the Child": "",
+          "Problems in Home": "",
           "Behavioral Impact": "",
-          "Academic Performance ": "",
-          "Family Income ": "",
-          "Role models": "",
-          "Reason for role model ": "",
-          "Counselling Needed ": ""
+          "Academic Performance": "",
+          "Family Income": "",
+          "Role Models": "",
+          "Reason for Such Role Model": ""
         });
         setErrors({});
         
@@ -272,7 +328,7 @@ const SurveyForm: React.FC<SurveyFormProps> = ({ onSubmitSuccess }) => {
       {resolvedStudentName && (
         <div className="mb-6 rounded-xl border border-purple-200 bg-purple-50 p-4 text-sm text-purple-800">
           Recording assessment for <span className="font-semibold">{resolvedStudentName}</span>.
-          Results will be visible only to the associated school admin.
+          {isStudentDobFixed ? ' Date of birth is locked to the student profile.' : ' Results will be visible only to the associated school admin.'}
         </div>
       )}
       <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">Career Guidance Survey</h2>
@@ -280,23 +336,47 @@ const SurveyForm: React.FC<SurveyFormProps> = ({ onSubmitSuccess }) => {
         {/* Child Information */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           <div>
+            <label htmlFor="timestamp" className="block text-sm font-medium text-gray-700 mb-1">
+              Timestamp *
+            </label>
+            <input
+              id="timestamp"
+              type="datetime-local"
+              name="Timestamp"
+              value={formatDateTimeLocalValue(formData["Timestamp"])}
+              readOnly
+              step={1}
+              required
+              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors["Timestamp"] ? 'border-red-400 focus:ring-red-400' : 'border-gray-200 focus:ring-purple-500'}`}
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              This timestamp updates automatically in real time.
+            </p>
+          </div>
+          <div>
             <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
               Name of Child *
             </label>
             <input
               id="name"
               type="text"
-              name="Name of Child "
-              value={formData["Name of Child "]}
+              name="Name of Child"
+              value={formData["Name of Child"]}
               onChange={handleChange}
+              disabled={isStudentNameFixed}
               required
-              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors["Name of Child "] ? 'border-red-400 focus:ring-red-400' : 'border-gray-200 focus:ring-purple-500'}`}
+              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors["Name of Child"] ? 'border-red-400 focus:ring-red-400' : 'border-gray-200 focus:ring-purple-500'}`}
               aria-required="true"
-              aria-invalid={Boolean(errors["Name of Child "])}
+              aria-invalid={Boolean(errors["Name of Child"])}
             />
-            {errors["Name of Child "] && (
+            {isStudentNameFixed && (
+              <p className="mt-1 text-xs text-gray-500">
+                This name comes from the selected student profile and cannot be changed here.
+              </p>
+            )}
+            {errors["Name of Child"] && (
               <p className="mt-1 text-xs text-red-600">
-                {errors["Name of Child "]}. Please enter letters and spaces only.
+                {errors["Name of Child"]}. Please enter letters and spaces only.
               </p>
             )}
           </div>
@@ -321,6 +401,32 @@ const SurveyForm: React.FC<SurveyFormProps> = ({ onSubmitSuccess }) => {
               </p>
             )}
           </div>
+        </div>
+
+        <div>
+          <label htmlFor="dob" className="block text-sm font-medium text-gray-700 mb-1">
+            Date of Birth *
+          </label>
+          <input
+            id="dob"
+            type="date"
+            name="Date of Birth"
+            value={formData["Date of Birth"]}
+            onChange={handleChange}
+            disabled={isStudentDobFixed}
+            required
+            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors["Date of Birth"] ? 'border-red-400 focus:ring-red-400' : 'border-gray-200 focus:ring-purple-500'}`}
+          />
+          {isStudentDobFixed && (
+            <p className="mt-1 text-xs text-gray-500">
+              This date of birth comes from the selected student profile and cannot be changed here.
+            </p>
+          )}
+          {errors["Date of Birth"] && (
+            <p className="mt-1 text-xs text-red-600">
+              {errors["Date of Birth"]}.
+            </p>
+          )}
         </div>
 
         <div>
@@ -353,17 +459,17 @@ const SurveyForm: React.FC<SurveyFormProps> = ({ onSubmitSuccess }) => {
           <input
             id="background"
             type="text"
-            name="Background of the Child "
-            value={formData["Background of the Child "]}
+            name="Background of the Child"
+            value={formData["Background of the Child"]}
             onChange={handleChange}
             required
-            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors["Background of the Child "] ? 'border-red-400 focus:ring-red-400' : 'border-gray-200 focus:ring-purple-500'}`}
+            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors["Background of the Child"] ? 'border-red-400 focus:ring-red-400' : 'border-gray-200 focus:ring-purple-500'}`}
             aria-required="true"
-            aria-invalid={Boolean(errors["Background of the Child "] )}
+            aria-invalid={Boolean(errors["Background of the Child"] )}
           />
-          {errors["Background of the Child "] && (
+          {errors["Background of the Child"] && (
             <p className="mt-1 text-xs text-red-600">
-              {errors["Background of the Child "]}. Describe briefly (e.g. "Middle class family").
+              {errors["Background of the Child"]}. Describe briefly (e.g. "Middle class family").
             </p>
           )}
         </div>
@@ -375,17 +481,17 @@ const SurveyForm: React.FC<SurveyFormProps> = ({ onSubmitSuccess }) => {
           <input
             id="problems"
             type="text"
-            name="Problems in Home "
-            value={formData["Problems in Home "]}
+            name="Problems in Home"
+            value={formData["Problems in Home"]}
             onChange={handleChange}
             required
-            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors["Problems in Home "] ? 'border-red-400 focus:ring-red-400' : 'border-gray-200 focus:ring-purple-500'}`}
+            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors["Problems in Home"] ? 'border-red-400 focus:ring-red-400' : 'border-gray-200 focus:ring-purple-500'}`}
             aria-required="true"
-            aria-invalid={Boolean(errors["Problems in Home "] )}
+            aria-invalid={Boolean(errors["Problems in Home"] )}
           />
-          {errors["Problems in Home "] && (
+          {errors["Problems in Home"] && (
             <p className="mt-1 text-xs text-red-600">
-              {errors["Problems in Home "]}. Mention any major challenges (financial, family, etc.).
+              {errors["Problems in Home"]}. Mention any major challenges (financial, family, etc.).
             </p>
           )}
         </div>
@@ -416,41 +522,41 @@ const SurveyForm: React.FC<SurveyFormProps> = ({ onSubmitSuccess }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           <div>
             <label htmlFor="academic" className="block text-sm font-medium text-gray-700 mb-1">
-              Academic Performance (Scale 1-10)
+              Academic Performance *
             </label>
             <input
               id="academic"
               type="number"
-              name="Academic Performance "
-              value={formData["Academic Performance "]}
+              name="Academic Performance"
+              value={formData["Academic Performance"]}
               onChange={handleChange}
               min="1"
-              max="10"
+              max="100"
               required
-              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors["Academic Performance "] ? 'border-red-400 focus:ring-red-400' : 'border-gray-200 focus:ring-purple-500'}`}
+              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors["Academic Performance"] ? 'border-red-400 focus:ring-red-400' : 'border-gray-200 focus:ring-purple-500'}`}
             />
-            {errors["Academic Performance "] && (
+            {errors["Academic Performance"] && (
               <p className="mt-1 text-xs text-red-600">
-                {errors["Academic Performance "]}. Enter a score between 1 and 10.
+                {errors["Academic Performance"]}. Enter a score between 0 and 100.
               </p>
             )}
           </div>
           <div>
             <label htmlFor="income" className="block text-sm font-medium text-gray-700 mb-1">
-              Family Income (Monthly in Rupees)
+              Family Income *
             </label>
             <input
               id="income"
               type="number"
-              name="Family Income "
-              value={formData["Family Income "]}
+              name="Family Income"
+              value={formData["Family Income"]}
               onChange={handleChange}
               required
-              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors["Family Income "] ? 'border-red-400 focus:ring-red-400' : 'border-gray-200 focus:ring-purple-500'}`}
+              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors["Family Income"] ? 'border-red-400 focus:ring-red-400' : 'border-gray-200 focus:ring-purple-500'}`}
             />
-            {errors["Family Income "] && (
+            {errors["Family Income"] && (
               <p className="mt-1 text-xs text-red-600">
-                {errors["Family Income "]}. Provide a positive monthly amount.
+                {errors["Family Income"]}. Provide a positive monthly amount.
               </p>
             )}
           </div>
@@ -459,71 +565,44 @@ const SurveyForm: React.FC<SurveyFormProps> = ({ onSubmitSuccess }) => {
         {/* Role Models */}
         <div>
           <label htmlFor="roleModels" className="block text-sm font-medium text-gray-700 mb-1">
-            Role Models (e.g., Teacher, Doctor, Army, Guardian)
+            Role Models *
           </label>
           <input
             id="roleModels"
             type="text"
-            name="Role models"
-            value={formData["Role models"]}
+            name="Role Models"
+            value={formData["Role Models"]}
             onChange={handleChange}
             required
-            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors["Role models"] ? 'border-red-400 focus:ring-red-400' : 'border-gray-200 focus:ring-purple-500'}`}
+            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors["Role Models"] ? 'border-red-400 focus:ring-red-400' : 'border-gray-200 focus:ring-purple-500'}`}
           />
-          {errors["Role models"] && (
+          {errors["Role Models"] && (
             <p className="mt-1 text-xs text-red-600">
-              {errors["Role models"]}. Mention who inspires the student.
-            </p>
-          )}
-        </div>
-
-        {/* Counselling Needed */}
-        <div>
-          <label htmlFor="counsellingNeeded" className="block text-sm font-medium text-gray-700 mb-1">
-            Counselling Needed *
-          </label>
-          <select
-            id="counsellingNeeded"
-            name="Counselling Needed "
-            value={formData["Counselling Needed "] ?? ''}
-            onChange={handleChange}
-            required
-            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors["Counselling Needed "] ? 'border-red-400 focus:ring-red-400' : 'border-gray-200 focus:ring-purple-500'}`}
-            aria-required="true"
-            aria-invalid={Boolean(errors["Counselling Needed "] )}
-          >
-            <option value="">Select an option</option>
-            <option value="Yes">Yes</option>
-            <option value="No">No</option>
-            <option value="Maybe">Maybe</option>
-          </select>
-          {errors["Counselling Needed "] && (
-            <p className="mt-1 text-xs text-red-600">
-              {errors["Counselling Needed "]}. Choose whether the student needs counselling support.
+              {errors["Role Models"]}. Mention who inspires the student.
             </p>
           )}
         </div>
 
         {/* Reason for role model */}
         <div>
-          <label htmlFor="Reason for role model" className="block text-sm font-medium text-gray-700 mb-1">
-            Reason for role model *
+          <label htmlFor="reasonForRoleModel" className="block text-sm font-medium text-gray-700 mb-1">
+            Reason for Such Role Model *
           </label>
           <input
-            id="reasonforrolemodel"
+            id="reasonForRoleModel"
             type="text"
-            name="Reason for role model "
-            value={formData["Reason for role model "]}
+            name="Reason for Such Role Model"
+            value={formData["Reason for Such Role Model"]}
             onChange={handleChange}
             required
-            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors["Reason for role model "] ? 'border-red-400 focus:ring-red-400' : 'border-gray-200 focus:ring-purple-500'}`}
-            placeholder="e.g., Yes, No, Maybe"
+            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors["Reason for Such Role Model"] ? 'border-red-400 focus:ring-red-400' : 'border-gray-200 focus:ring-purple-500'}`}
+            placeholder="Explain why this role model inspires the child"
             aria-required="true"
-            aria-invalid={Boolean(errors["Reason for role model "] )}
+            aria-invalid={Boolean(errors["Reason for Such Role Model"] )}
           />
-          {errors["Reason for role model "] && (
+          {errors["Reason for Such Role Model"] && (
             <p className="mt-1 text-xs text-red-600">
-              {errors["Reason for role model "]}. Say why this role model matters.
+              {errors["Reason for Such Role Model"]}. Say why this role model matters.
             </p>
           )}
         </div>

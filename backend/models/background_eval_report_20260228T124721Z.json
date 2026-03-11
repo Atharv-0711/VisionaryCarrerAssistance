@@ -1,0 +1,68 @@
+{
+  "input_path": "E:\\placement ki tayyari\\VisionaryCarrerAssistance\\backend\\Childsurvey.xlsx",
+  "seed": 42,
+  "split": {
+    "train_rows": 587,
+    "val_rows": 125,
+    "test_rows": 121,
+    "train_groups": 494,
+    "val_groups": 106,
+    "test_groups": 106
+  },
+  "best_baseline_on_val": "simple_linear",
+  "promote_rl_model": false,
+  "models": {
+    "mean_predictor": {
+      "val": {
+        "rmse": 0.7906,
+        "mae": 0.6112,
+        "r2": -0.0122
+      },
+      "test": {
+        "rmse": 0.8594,
+        "mae": 0.678,
+        "r2": -0.0054
+      }
+    },
+    "static_prior": {
+      "val": {
+        "rmse": 1.9313,
+        "mae": 1.612,
+        "r2": -5.0401
+      },
+      "test": {
+        "rmse": 1.9865,
+        "mae": 1.6281,
+        "r2": -4.3724
+      }
+    },
+    "simple_linear": {
+      "val": {
+        "rmse": 0.7896,
+        "mae": 0.6134,
+        "r2": -0.0096
+      },
+      "test": {
+        "rmse": 0.8633,
+        "mae": 0.6827,
+        "r2": -0.0146
+      }
+    },
+    "rl_model": {
+      "val": {
+        "rmse": 1.9046,
+        "mae": 1.5913,
+        "r2": -4.8744
+      },
+      "test": {
+        "rmse": 1.961,
+        "mae": 1.6078,
+        "r2": -4.2351
+      }
+    }
+  },
+  "artifacts": {
+    "versioned_model_path": null,
+    "active_model_path": null
+  }
+}

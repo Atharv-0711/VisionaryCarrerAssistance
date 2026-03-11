@@ -1,6 +1,12 @@
 import React, { useMemo } from 'react';
 import { Brain } from 'lucide-react';
 import {
+  formatCorrelation,
+  formatCount,
+  formatInsightScore,
+  INSIGHT_TITLES,
+} from '../../utils/insightPresentation';
+import {
   ResponsiveContainer,
   BarChart,
   Bar,
@@ -23,10 +29,14 @@ interface BackgroundAnalysisProps {
     neutral: number;
     negative: number;
     highly_negative: number;
+    academic_correlation?: number;
+    training_samples?: number;
+    model_updated?: boolean;
     background_details?: {
       background: string;
       score: number;
       category: string;
+      academic_performance_score?: number | null;
     }[];
   };
 }
@@ -86,7 +96,7 @@ const BackgroundAnalysis: React.FC<BackgroundAnalysisProps> = ({ data }) => {
       }
       return b.averageScore - a.averageScore;
     });
-    return sorted.slice(0, 10);
+    return sorted;
   }, [aggregatedBackgrounds]);
 
   const sentimentChartData = useMemo(
@@ -119,12 +129,21 @@ const BackgroundAnalysis: React.FC<BackgroundAnalysisProps> = ({ data }) => {
     { label: 'Highly Negative', value: data.highly_negative, color: 'bg-red-500', percentage: calculatePercentage(data.highly_negative) },
   ];
 
+  const correlationValue = data.academic_correlation ?? 0;
+  const correlationPercent = correlationValue * 100;
+  const correlationLabel =
+    correlationValue > 0
+      ? 'Positive'
+      : correlationValue < 0
+      ? 'Negative'
+      : 'No clear';
+
   return (
     <div className="bg-white rounded-2xl shadow-sm p-5 sm:p-6 space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div className="flex items-center">
           <Brain className="h-6 w-6 text-blue-600 mr-2" />
-          <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Background Analysis</h2>
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-900">{INSIGHT_TITLES.background}</h2>
         </div>
         <p className="text-xs text-gray-500 sm:hidden">
           Sentiment distribution across student backgrounds.
@@ -169,54 +188,66 @@ const BackgroundAnalysis: React.FC<BackgroundAnalysisProps> = ({ data }) => {
               <div>
                 <p className="text-xs sm:text-sm text-gray-600">Average Score</p>
                 <p className="text-xl sm:text-2xl font-semibold text-blue-600">
-                  {data.average_score.toFixed(2)}
+                  {formatInsightScore(data.average_score)}
                 </p>
               </div>
               <div>
                 <p className="text-xs sm:text-sm text-gray-600">Total Responses</p>
-                <p className="text-xl sm:text-2xl font-semibold text-blue-600">{total}</p>
+                <p className="text-xl sm:text-2xl font-semibold text-blue-600">{formatCount(total)}</p>
               </div>
               <div>
                 <p className="text-xs sm:text-sm text-gray-600">Positive Responses</p>
                 <p className="text-xl sm:text-2xl font-semibold text-green-600">
-                  {data.positive_count}
+                  {formatCount(data.positive_count)}
                 </p>
               </div>
               <div>
                 <p className="text-xs sm:text-sm text-gray-600">Negative Responses</p>
                 <p className="text-xl sm:text-2xl font-semibold text-red-600">
-                  {data.negative_count}
+                  {formatCount(data.negative_count)}
                 </p>
+              </div>
+              <div>
+                <p className="text-xs sm:text-sm text-gray-600">Academic Correlation</p>
+                <p className="text-xl sm:text-2xl font-semibold text-indigo-600">
+                  {formatCorrelation(correlationValue)}
+                </p>
+                <p className="text-xs text-gray-500">{correlationLabel} relation (scale: -1 to +1)</p>
               </div>
             </div>
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5">
-            <h3 className="text-sm font-semibold text-gray-800 mb-3 sm:mb-4">Top Background Sentiments</h3>
+            <h3 className="text-sm font-semibold text-gray-800 mb-3 sm:mb-4">All Background Sentiments</h3>
             {topBackgrounds.length === 0 ? (
               <p className="text-gray-500 text-sm">No background sentiment data available.</p>
             ) : (
-              <div className="h-56 sm:h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={topBackgrounds}
-                    margin={{ top: 10, right: 10, left: 0, bottom: 30 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="background" angle={-35} textAnchor="end" height={70} interval={0} />
-                    <YAxis domain={[1, 5]} allowDecimals={false} />
-                    <Tooltip
-                      formatter={(value: number, _name, payload) => [
-                        `${(value as number).toFixed(2)} (avg score)`,
-                        `${payload?.payload?.count ?? 0} responses`,
-                      ]}
-                      labelFormatter={(label) => `Background: ${label}`}
-                    />
-                    <Bar dataKey="averageScore" fill="#6366f1" radius={[6, 6, 0, 0]}>
-                      <LabelList dataKey="count" position="top" className="text-xs" />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className="overflow-x-auto">
+                <div
+                  className="h-56 sm:h-64"
+                  style={{ minWidth: `${Math.max(topBackgrounds.length * 90, 600)}px` }}
+                >
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={topBackgrounds}
+                      margin={{ top: 10, right: 10, left: 0, bottom: 30 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="background" angle={-35} textAnchor="end" height={70} interval={0} />
+                      <YAxis domain={[1, 5]} allowDecimals={false} />
+                      <Tooltip
+                        formatter={(value: number, _name, payload) => [
+                          `${(value as number).toFixed(2)} (avg score)`,
+                          `${payload?.payload?.count ?? 0} responses`,
+                        ]}
+                        labelFormatter={(label) => `Background: ${label}`}
+                      />
+                      <Bar dataKey="averageScore" fill="#6366f1" radius={[6, 6, 0, 0]}>
+                        <LabelList dataKey="count" position="top" className="text-xs" />
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             )}
           </div>

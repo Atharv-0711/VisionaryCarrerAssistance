@@ -1,3 +1,0 @@
-Timestamp,Threshold,OldValue,NewValue,Feedback
-2026-02-20T02:15:02.802505,low_income,10000.0,10152,income=12000.0, predicted=low_income, actual=below_average
-2026-02-20T02:15:02.803872,below_average,25000.0,26192,income=40000.0, predicted=below_average, actual=average

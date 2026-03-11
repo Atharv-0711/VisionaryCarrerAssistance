@@ -7,6 +7,37 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Python caches and environments
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.venv/
+venv/
+env/
+
+# Environment files
+.env
+*.env
+
+# Runtime databases and local state
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary Office files
+~$*.xlsx
+~$*.docx
+
+# Generated model reports and logs
+backend/models/background_eval_report_*.json
+backend/models/background_simple_linear_model_*.json
+models/*_learning_log.txt
+
 node_modules
 dist
 dist-ssr
